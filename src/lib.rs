@@ -1,28 +1,17 @@
+// pub use crate::entry;
 use std::env;
 use std::fs;
 use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 
-fn path_validate(path: &std::path::PathBuf, prefix: &str) -> Result<PathBuf, Error> {
-    let file_path = path.to_string_lossy().to_owned();
-    if path.exists() {
-        if path.is_file() {
-            // Return the path if it exists and is a file
-            Ok(path.clone())
-        } else {
-            Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("{}not a file: {}", prefix, file_path),
-            ))
-        }
-    } else {
-        Err(Error::new(
-            ErrorKind::NotFound,
-            format!("{}does not exist: {}", prefix, file_path),
-        ))
-    }
-}
-
+/// Get the path to a TSV file.
+///
+/// The are three possible sources of this path in increasing order of
+/// likelyhood and preference.
+/// 1. It is given.
+/// 2. The environment variable $ididTSV has the path.
+/// 3. The environment variable $XDG_DATA_HOME/idid/idid.tsv
+///    If the file doesn't exist, it will attempt to create it.
 pub fn get_tsv_path(tsv: Option<std::path::PathBuf>) -> Result<PathBuf, Error> {
     match tsv {
         Some(path) => path_validate(&path, "--tsv "),
@@ -60,51 +49,37 @@ pub fn get_tsv_path(tsv: Option<std::path::PathBuf>) -> Result<PathBuf, Error> {
             }
         }
     }
+}
 
-    // let env_var = "ididTSV";
-    // // Existing "ididTSV" environment variable contains absolute path
-    // if let Ok(value) = env::var(env_var) {
-    //     let path = PathBuf::from(&value);
-    //
-    //     // Check if the path exists and is a file
-    //     if path.exists() && path.is_file() {
-    //         return Ok(path);
-    //     } else {
-    //         return Err(format!(
-    //             "environment variable {env_var} of '{value}' is not a valid file path."
-    //         ));
-    //     }
-    // }
-    // let env_xdg = "XDG_DATA_HOME";
-    // // Check for file $XDG_DATA_HOME/idid/idid.tsv
-    // if let Ok(value) = env::var(env_xdg) {
-    //     let mut path = PathBuf::from(value);
-    //     path.push("idid");
-    //     path.push("idid.tsv");
-    //
-    //     // Check if the path exists and is a file
-    //     if path.exists() && path.is_file() {
-    //         return Ok(path);
-    //     } else {
-    //         // Create the file if possible
-    //         match fs::File::create(&path) {
-    //             Ok(_fc) => return Ok(path),
-    //             Err(e) => return Err(format!("Problem creating file: {:?}", e)),
-    //         };
-    //     }
-    // }
-    //
-    // // If neither variable exists, return an error
-    // Err(format!(
-    //     "Neither {env_var} nor {env_xdg} environment variables found."
-    // ))
+/// Check the path exists and it is a file.
+fn path_validate(path: &std::path::PathBuf, prefix: &str) -> Result<PathBuf, Error> {
+    let file_path = path.to_string_lossy().to_owned();
+    if path.exists() {
+        if path.is_file() {
+            // Return the path if it exists and is a file
+            Ok(path.clone())
+        } else {
+            Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("{}not a file: {}", prefix, file_path),
+            ))
+        }
+    } else {
+        Err(Error::new(
+            ErrorKind::NotFound,
+            format!("{}does not exist: {}", prefix, file_path),
+        ))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::fs::File;
+    // use super::*;
+    use crate::get_tsv_path;
+    use std::env;
+    use std::fs;
     use std::io::Error;
+    use std::path::PathBuf;
     use tempfile::Builder;
 
     #[test]
@@ -161,7 +136,7 @@ mod tests {
 
         // Create an empty file "idid.txt" inside the "idid" directory
         let file_path = idid_dir.join("idid.tsv");
-        let temp_file = File::create(&file_path)?;
+        let temp_file = fs::File::create(&file_path)?;
         drop(temp_file);
 
         // Set the environment variable for testing purposes

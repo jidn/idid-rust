@@ -3,6 +3,9 @@ use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
+// mod lib;
+// mod idid;
+
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Add accomplishment.
@@ -15,6 +18,7 @@ enum Commands {
         /// Text to record
         #[arg(required = true)]
         text: Vec<String>,
+        // println!(idid::get_current_timestamp());
     },
     /// Edit TSV file using $EDITOR.
     Edit,
@@ -75,8 +79,10 @@ fn main() {
     match cli.command {
         Some(Commands::Add { offset, text }) => {
             println!(
-                "Add offset={}, tsv={}, text='{}'",
+                "Add offset={}, timestamp={}, tsv={}, text='{}'",
                 get_string(offset),
+                "get_current_timestamp",
+                // idid::get_current_timestamp(),
                 tsv,
                 text.join(" "),
             );
