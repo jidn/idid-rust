@@ -6,12 +6,16 @@ use std::path::PathBuf;
 
 /// Get the path to a TSV file.
 ///
-/// The are three possible sources of this path in increasing order of
-/// likelyhood and preference.
-/// 1. It is given.
-/// 2. The environment variable $ididTSV has the path.
-/// 3. The environment variable $XDG_DATA_HOME/idid/idid.tsv
-///    If the file doesn't exist, it will attempt to create it.
+/// Confirm the path exists and is a file.
+///
+/// # Arguments
+/// * `tsv` - An optional `std::path::PathBuf` representing a reference date.
+///     The are three possible sources of this path in increasing order of
+///     likelyhood and preference.  
+///     1. Given std::path::PathBuf.
+///     2. The environment variable $ididTSV has the path.
+///     3. The environment variable $XDG_DATA_HOME/idid/idid.tsv  
+///        If the file doesn't exist, it will attempt to create it.
 pub fn get_tsv_path(tsv: Option<std::path::PathBuf>) -> Result<PathBuf, Error> {
     match tsv {
         Some(path) => path_validate(&path, "--tsv "),
@@ -74,18 +78,19 @@ fn path_validate(path: &std::path::PathBuf, prefix: &str) -> Result<PathBuf, Err
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
-    use crate::get_tsv_path;
+    use super::*;
+    // use crate::get_tsv_path;
     use std::env;
     use std::fs;
     use std::io::Error;
     use std::path::PathBuf;
     use tempfile::Builder;
 
+    // These tests mess with environmen variables so should run syncro
+    // cargo test -- --ignored --test-threads=1
+    // cargo test -- --include-ignored --test-threads=1
     #[test]
-    fn test_get_tsv_path_optional() {}
-
-    #[test]
+    #[ignore]
     fn test_get_tsv_path_ididtsv() -> Result<(), Error> {
         let env_vars = ["ididTSV", "XDG_DATA_HOME"];
         // Save the current values of the environment variables
@@ -119,6 +124,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_get_tsv_path_xdg() -> Result<(), Error> {
         let env_vars = ["ididTSV", "XDG_DATA_HOME"];
         // Save the current values of the environment variables

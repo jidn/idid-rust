@@ -37,7 +37,7 @@ enum Commands {
     //     ISO 8601 date format 'YYYY-MM-DD' or 'MM-DD' the last 364ish days.
     //         Dashes are optional.
     //     The locale abbreviated, last day-of-the-week. A suffix adds weeks.
-    //         'mon' and 'mon1' is last Monday and 'mon2' is two Mondays ago.
+    //         'mon' is last Monday and 'mon1' adds a week.
     // --date DATE[,DATE]...    multiple allowed
     // --range DATE DATE        multiple allowed
     //
@@ -70,6 +70,8 @@ fn get_string(option_str: Option<String>) -> String {
     option_str.unwrap_or(String::from("NONE"))
 }
 
+mod timestamp;
+
 fn main() {
     let cli = Cli::parse();
     let tsv: String = idid::get_tsv_path(cli.tsv)
@@ -81,11 +83,11 @@ fn main() {
             println!(
                 "Add offset={}, timestamp={}, tsv={}, text='{}'",
                 get_string(offset),
-                "get_current_timestamp",
-                // idid::get_current_timestamp(),
+                timestamp::get_current_timestamp(),
                 tsv,
                 text.join(" "),
             );
+            timestamp::write_new_entry(&text.join(" "))
         }
         Some(Commands::Edit {}) => {
             // Get the value of the EDITOR environment variable
