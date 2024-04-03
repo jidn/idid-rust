@@ -1,5 +1,5 @@
 // pub use crate::entry;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, FixedOffset};
 use std::env;
 use std::fs;
 use std::io::{Error, ErrorKind, Write};
@@ -77,7 +77,7 @@ fn path_validate(path: &std::path::PathBuf, prefix: &str) -> Result<PathBuf, Err
     }
 }
 
-pub fn write_to_tsv(path: &str, timestamp: &DateTime<Local>, text_to_append: &str) {
+pub fn write_to_tsv(path: &str, timestamp: &DateTime<FixedOffset>, text_to_append: &str) {
     // Open the file in append mode or create it if it doesn't exist
     let mut file = fs::OpenOptions::new()
         .create(true)

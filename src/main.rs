@@ -1,4 +1,5 @@
-use chrono::{DateTime, Local};
+use crate::util_time::current_datetime;
+use chrono::{DateTime, FixedOffset};
 use clap::{Parser, Subcommand};
 use idid::write_to_tsv;
 use std::env;
@@ -62,6 +63,7 @@ enum Commands {
 
 #[derive(Parser)]
 #[command(version, about, long_about)] // read from Cargo.toml
+#[command(arg_required_else_help = true)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -75,14 +77,15 @@ fn get_string(option_str: Option<String>) -> String {
     option_str.unwrap_or("NONE".to_string())
 }
 
-fn ended_at(offset: Option<&str>) -> Result<DateTime<Local>, String> {
+fn ended_at(offset: Option<&str>) -> Result<DateTime<FixedOffset>, String> {
     if offset.is_some() {
         return timestamp::parse_time_adjustment(offset);
     }
-    Ok(chrono::Local::now())
+    Ok(current_datetime())
 }
 
 mod timestamp;
+mod util_time;
 
 fn main() {
     let cli = Cli::parse();

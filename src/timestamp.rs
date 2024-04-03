@@ -8,11 +8,12 @@
 //         """Duration from begin to cease."""
 //         return self.cease - self.begin
 
-use chrono::{DateTime, Datelike, Duration, Local, NaiveDate, NaiveTime};
+use crate::util_time::current_datetime;
+use chrono::{DateTime, Datelike, Duration, FixedOffset, NaiveDate, NaiveTime};
 
 pub fn get_current_timestamp() -> String {
     // Get the current local time
-    let local_time = Local::now();
+    let local_time = current_datetime();
 
     // Format the local time in ISO 8601 format with timezone offset
     local_time.format("%Y-%m-%d %H:%M:%S%:z").to_string()
@@ -27,23 +28,23 @@ pub fn get_current_timestamp() -> String {
 ///    - "HH:MM" ie "7:30" or "14:00" in 24 hour time.
 ///    - "HH[:MM](am|pm)" ie "8am", "8:15am", "1:30pm", or "5pm".
 ///
-pub fn parse_time_adjustment(input: Option<&str>) -> Result<DateTime<Local>, String> {
+pub fn parse_time_adjustment(input: Option<&str>) -> Result<DateTime<FixedOffset>, String> {
     if input.is_none() {
-        return Ok(Local::now());
+        return Ok(current_datetime());
     }
 
     let input_str = input.unwrap();
     // Try parsing input as minutes in the past
     if let Ok(minutes) = input_str.parse::<i32>() {
         if minutes > 0 && minutes <= 1440 {
-            let offset_time = Local::now()
+            let offset_time = current_datetime()
                 .checked_sub_signed(Duration::minutes(minutes as i64))
                 .unwrap();
             #[cfg(debug_assertions)]
             println!(
                 "parse_time_adjutment minutes={}, current={}, computed={}, computed_timestamp={}",
                 minutes,
-                Local::now(),
+                current_datetime(),
                 offset_time,
                 offset_time.timestamp() as f64
             );
@@ -98,11 +99,11 @@ pub fn parse_time_adjustment(input: Option<&str>) -> Result<DateTime<Local>, Str
     Ok(local_timestamp(hour, minute))
 }
 
-/// Parse text to create a date
+/// Create a date relative to the current date and time.
 ///
 /// # Arguments
 ///
-/// * `text` - A string slice representing a date format.
+/// * `format` - A string slice representing a date format.
 ///    - Days before today. 0 is today and 1 is yesterday; max 999.
 ///    - Literal "today" or "yesterday".
 ///    - YYYYMMDD (dashes optinal).
@@ -111,45 +112,41 @@ pub fn parse_time_adjustment(input: Option<&str>) -> Result<DateTime<Local>, Str
 ///    - Last week day with optional numeric suffix to add weeks.
 ///      "mon" is last Monday and "mon1" goes back an additional week.
 ///
-/// * `date` - An `chrono::NaiveDate` used for most input. None is today.
-///
 /// # Panics
 ///
 /// This function does not panic under normal circumstances.
 /// However, if the input string represents a date outside the valid range of
 /// `NaiveDate`, it may panic when trying to create the date.
-pub fn parse_date(text: &str, date: Option<NaiveDate>) -> Result<NaiveDate, String> {
-    // Keep as option as we will likely call another fn
-    let relative_date = Some(date.unwrap_or_else(|| local_naive_date()));
+pub fn parse_date(format: &str) -> Result<NaiveDate, String> {
+    let now = current_datetime().date_naive();
 
     #[cfg(debug_assertions)]
-    println!("parse_date(\"{}\", {})", text, relative_date.unwrap());
+    println!("parse_date(\"{}\", {})", format, now);
 
     // All days before today and YYYY-MM-DD variants
-    if text.chars().all(|c| c.is_digit(10) || c == '-') {
+    if format.chars().all(|c| c.is_digit(10) || c == '-') {
         #[cfg(debug_assertions)]
         println!("parse_numeric_to_date");
-        return parse_numeric_to_date(text, relative_date);
+        return parse_numeric_to_date(format, Some(now));
     }
 
     // Instead of forcing the full "yesterday", allow anything that starts
     // with "yester", like "yesternight".  This one is for you Cameron.
-    let lower_case = text.to_lowercase();
+    let lower_case = format.to_lowercase();
     if lower_case.starts_with("yester") {
         #[cfg(debug_assertions)]
         println!("Working on 'yester'");
-        return relative_date
-            .unwrap()
+        return now
             .checked_sub_signed(chrono::Duration::days(1))
             .ok_or_else(|| format!("unable to get {} ", lower_case));
     }
 
-    match text {
-        "today" => Ok(relative_date.unwrap()),
+    match format {
+        "today" => Ok(now),
         _ => {
             #[cfg(debug_assertions)]
             println!("parse_last_dow(\"{}\",...)", &lower_case);
-            parse_last_dow(&lower_case, relative_date)
+            parse_last_dow(&lower_case, Some(now))
         }
     }
 }
@@ -275,10 +272,10 @@ fn parse_last_dow(input: &str, reference_date: Option<NaiveDate>) -> Result<Naiv
 }
 
 fn local_naive_date() -> NaiveDate {
-    Local::now().date_naive()
+    current_datetime().date_naive()
 }
-fn local_timestamp(hour: u32, minute: u32) -> DateTime<Local> {
-    Local::now()
+fn local_timestamp(hour: u32, minute: u32) -> DateTime<FixedOffset> {
+    current_datetime()
         .with_time(NaiveTime::from_hms_opt(hour, minute, 0).unwrap())
         .unwrap()
 }
@@ -308,17 +305,23 @@ impl MonthDay {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::util_time::{current_datetime_reset, current_datetime_set};
     use assert_approx_eq::assert_approx_eq;
     use rstest::rstest;
 
+    fn set_current_datetime_to_april_1_2024() {
+        current_datetime_set(DateTime::parse_from_rfc3339("2024-04-01T12:15:30+05:00").unwrap());
+        println!("Set current_datetime to {}", current_datetime());
+    }
+
     #[rstest]
-    #[case("30", Local::now() - Duration::minutes(30))]
+    #[case("30", current_datetime() - Duration::minutes(30))]
     #[case("7:30", local_timestamp(7, 30))]
     #[case("7:30am", local_timestamp(7, 30))]
     #[case("7:30pm", local_timestamp(19, 30))]
     #[case("8am", local_timestamp(8, 0))]
     #[case("8pm", local_timestamp(20, 0))]
-    fn test_parse_time_adjustment(#[case] input: &str, #[case] expected: DateTime<Local>) {
+    fn test_parse_time_adjustment(#[case] input: &str, #[case] expected: DateTime<FixedOffset>) {
         match parse_time_adjustment(Some(input)) {
             Ok(actual) => {
                 eprintln!(
@@ -375,9 +378,11 @@ mod tests {
         #[case] month: u32,
         #[case] day: u32,
     ) {
-        let reference_date = NaiveDate::from_ymd_opt(2024, 4, 1).unwrap();
         let expected = NaiveDate::from_ymd_opt(year, month, day).unwrap();
-        match parse_date(input, Some(reference_date)) {
+        set_current_datetime_to_april_1_2024();
+        let parsed_date = parse_date(input);
+        current_datetime_reset();
+        match parsed_date {
             Ok(actual) => {
                 println!(
                     "input=\"{}\", expected={}, actual={}",
@@ -459,8 +464,9 @@ mod tests {
     #[case("tue0", 26)]
     #[case("tue1", 19)]
     fn test_parse_dow(#[case] input: &str, #[case] dom: u32) {
-        // Given today is Monday, April 1, 2024
-        let actual = parse_date(input, NaiveDate::from_ymd_opt(2024, 4, 1)).unwrap();
+        set_current_datetime_to_april_1_2024(); // monday
+        let actual = parse_date(input).unwrap();
+        current_datetime_reset();
         let expected = NaiveDate::from_ymd_opt(2024, 3, dom).unwrap();
         assert_eq!(
             expected, actual,
@@ -473,7 +479,7 @@ mod tests {
     #[test]
     fn test_parse_dow_bad_input() {
         let input = "xyz";
-        match parse_date(input, None) {
+        match parse_date(input) {
             Ok(_) => {
                 // Test fails if the result is Ok (unexpected)
                 panic!("Expected Err but got Ok");
@@ -494,7 +500,7 @@ mod tests {
     #[test]
     fn test_parse_dow_no_reference_date() {
         // Parse Tuesday without providing reference_date parameter
-        let tuesday = parse_date("tue", None);
+        let tuesday = parse_date("tue");
         // Expect Some date
         assert_eq!(tuesday.unwrap().weekday().num_days_from_monday(), 1);
     }
