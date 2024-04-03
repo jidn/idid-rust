@@ -1,13 +1,3 @@
-// class Entry:
-//     """A recorded accomplishment entry."""
-//
-//     begin: datetime
-//     cease: datetime
-//     text: str
-//     def duration(self) -> timedelta:
-//         """Duration from begin to cease."""
-//         return self.cease - self.begin
-
 use crate::util_time::current_datetime;
 use chrono::{DateTime, Datelike, Duration, FixedOffset, NaiveDate, NaiveTime};
 
@@ -50,7 +40,7 @@ pub fn parse_time_adjustment(input: Option<&str>) -> Result<DateTime<FixedOffset
             );
             return Ok(offset_time);
         }
-        return Err(format!("Invalid minutes \"{}\"", input_str));
+        return Err(format!("Invalid minutes {:?}", input_str));
     }
 
     // Parse as a given time, "HH:MM", "HH[:MM](am|pm)"
@@ -91,7 +81,7 @@ pub fn parse_time_adjustment(input: Option<&str>) -> Result<DateTime<FixedOffset
     let pm = input_str.ends_with("pm");
     if hour > 11 && (pm || input_str.ends_with("am")) {
         let am_pm_str = if pm { "pm" } else { "am" };
-        return Err(format!("invalid hours with \"{}\"", am_pm_str));
+        return Err(format!("invalid hours with {:?}", am_pm_str));
     } else if pm {
         hour += 12; // Convert to 24-hour format when using "pm"
     }
@@ -121,7 +111,7 @@ pub fn parse_date(format: &str) -> Result<NaiveDate, String> {
     let now = current_datetime().date_naive();
 
     #[cfg(debug_assertions)]
-    println!("parse_date(\"{}\", {})", format, now);
+    println!("parse_date({:?}, {})", format, now);
 
     // All days before today and YYYY-MM-DD variants
     if format.chars().all(|c| c.is_digit(10) || c == '-') {
@@ -145,7 +135,7 @@ pub fn parse_date(format: &str) -> Result<NaiveDate, String> {
         "today" => Ok(now),
         _ => {
             #[cfg(debug_assertions)]
-            println!("parse_last_dow(\"{}\",...)", &lower_case);
+            println!("parse_last_dow({:?},...)", &lower_case);
             parse_last_dow(&lower_case, Some(now))
         }
     }
@@ -325,14 +315,14 @@ mod tests {
         match parse_time_adjustment(Some(input)) {
             Ok(actual) => {
                 eprintln!(
-                    "input=\"{}\", expected={}, actual={}",
+                    "input={:?}, expected={:?}, actual={:?}",
                     input, expected, actual
                 );
                 assert_approx_eq!(expected.timestamp() as f64, actual.timestamp() as f64, 0.1);
             }
             Err(err) => {
                 panic!(
-                    "input=\"{}\", expected=\"{}\", error: {}",
+                    "input={:?}, expected={:?}, erroe={:?}",
                     input, expected, err
                 );
             }
@@ -358,7 +348,7 @@ mod tests {
                 // Test passes if the result is Err and the error message matches the expected value
                 assert_eq!(
                     expected, err,
-                    "input=\"{}\" actual=\"{}\" expected=\"{}\"",
+                    "input={:?} actual={:?} expected={:?}",
                     input, err, expected
                 );
             }
@@ -385,14 +375,14 @@ mod tests {
         match parsed_date {
             Ok(actual) => {
                 println!(
-                    "input=\"{}\", expected={}, actual={}",
+                    "input={:?}, expected={:?}, actual={:?}",
                     input, expected, actual
                 );
                 assert_eq!(expected, actual);
             }
             Err(err) => {
                 panic!(
-                    "input=\"{}\", expected=\"{}\", error: {}",
+                    "input={:?}, expected={:?}, error={:?}",
                     input, expected, err
                 );
             }
@@ -416,14 +406,14 @@ mod tests {
         match parse_numeric_to_date(input, Some(reference_date)) {
             Ok(actual) => {
                 println!(
-                    "input=\"{}\", expected={}, actual={}",
+                    "input={:?}, expected={:?}, actual={:?}",
                     input, expected, actual
                 );
                 assert_eq!(expected, actual);
             }
             Err(err) => {
                 panic!(
-                    "input=\"{}\", expected=\"{}\", error: {}",
+                    "input={:?}, expected={:?}, error={:?}",
                     input, expected, err
                 );
             }
@@ -448,8 +438,8 @@ mod tests {
                 // Test passes if the result is Err and the error message matches the expected value
                 assert_eq!(
                     expected_error, err,
-                    "input=\"{}\" actual=\"{}\" expected=\"{}\"",
-                    input, err, expected_error
+                    "input={:?}, expected={:?}, actual={:?}",
+                    input, expected_error, err
                 );
             }
         }
@@ -470,7 +460,7 @@ mod tests {
         let expected = NaiveDate::from_ymd_opt(2024, 3, dom).unwrap();
         assert_eq!(
             expected, actual,
-            "input=\"{}\", expected=\"{}\", actual=\"{}\"",
+            "input={:?}, expected={:?}, actual={:?}",
             input, expected, actual
         );
         assert_eq!(expected, actual);
@@ -490,7 +480,7 @@ mod tests {
                     "invalid day of the week abbreviation; use: mon, tue, wed, thu, fri, sat, sun";
                 assert_eq!(
                     expected, err,
-                    "input=\"{}\", expected=\"{}\", actual=\"{}\" ",
+                    "input={:?}, expected={:?}, actual={:?}",
                     input, expected, err
                 );
             }
