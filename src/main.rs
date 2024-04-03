@@ -1,17 +1,16 @@
+use chrono::{DateTime, Local};
 use clap::{Parser, Subcommand};
+use idid::write_to_tsv;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
-
-// mod lib;
-// mod idid;
 
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Add accomplishment.
     #[command(arg_required_else_help = true)]
     Add {
-        /// Either WHEN minutes ago or at HH:MM.
+        /// WHEN minutes ago or time, ie "8am", "13:15", "4:55pm"
         #[arg(short = 't', value_name = "WHEN")]
         offset: Option<String>,
 
@@ -25,27 +24,34 @@ enum Commands {
 
     /// Start recording time.
     Start {
-        /// Either WHEN minutes ago or HH:MM.
+        /// WHEN minutes ago or time, ie "8am", "13:15", "4:55pm"
         #[arg(short = 't', value_name = "WHEN")]
         offset: Option<String>,
     },
 
-    // The following need selectors and filters
-    // Date can be any of:
-    //     Number of days before today; zero is today and one is yesterday.
-    //     Literal text of 'today' or 'yesterday'.
-    //     ISO 8601 date format 'YYYY-MM-DD' or 'MM-DD' the last 364ish days.
-    //         Dashes are optional.
-    //     The locale abbreviated, last day-of-the-week. A suffix adds weeks.
-    //         'mon' is last Monday and 'mon1' adds a week.
-    // --date DATE[,DATE]...    multiple allowed
-    // --range DATE DATE        multiple allowed
-    //
-    // Filters
-    // -x --exclude string
-    // -i --include string   or -f --find string
-    /// Lines for processing.
-    Lines,
+    /// Pick entries for processing by starting date.
+    ///
+    Pick {
+        /// DATE can be any of:
+        ///
+        ///  -  Days before today. 0 is today and 1 is yesterday; max 999.
+        ///  -  Literal "today" or "yesterday".
+        ///  -  YYYYMMDD (dashes optinal).
+        ///  -  YYMMDD (leading 0, dashes optional) starting in the year 2000.
+        ///  -  Last MMDD (leading 0, dashes optinal); within 364ish days.
+        ///  -  Last week day with optional numeric suffix to add weeks.
+        ///     "mon" is last Monday and "mon1" goes back an additional week.
+        #[arg(value_name="DATE", num_args=0.., help="See --help for allowed formats.", verbatim_doc_comment)]
+        dates: Option<Vec<String>>,
+
+        /// Pick entries inclusive to range
+        #[arg(short = 'r', long, value_name = "DATE", num_args = 2)]
+        range: Option<Vec<String>>,
+
+        /// Exclude entries containing TEXT
+        #[arg(short = 'x', long, value_name = "TEXT")]
+        exclude: Option<Vec<String>>,
+    },
 
     /// Show accomplishments.
     Show,
@@ -55,8 +61,7 @@ enum Commands {
 }
 
 #[derive(Parser)]
-#[command(version, long_about = None)] // read from Cargo.toml
-#[command(about = "Add, edit, and show accomplishments.")]
+#[command(version, about, long_about)] // read from Cargo.toml
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -67,7 +72,14 @@ struct Cli {
 }
 
 fn get_string(option_str: Option<String>) -> String {
-    option_str.unwrap_or(String::from("NONE"))
+    option_str.unwrap_or("NONE".to_string())
+}
+
+fn ended_at(offset: Option<&str>) -> Result<DateTime<Local>, String> {
+    if offset.is_some() {
+        return timestamp::parse_time_adjustment(offset);
+    }
+    Ok(chrono::Local::now())
 }
 
 mod timestamp;
@@ -78,17 +90,26 @@ fn main() {
         .unwrap()
         .to_string_lossy()
         .to_string();
+
     match cli.command {
-        Some(Commands::Add { offset, text }) => {
-            println!(
-                "Add offset={}, timestamp={}, tsv={}, text='{}'",
-                get_string(offset),
-                timestamp::get_current_timestamp(),
-                tsv,
-                text.join(" "),
-            );
-            timestamp::write_new_entry(&text.join(" "))
-        }
+        Some(Commands::Add { offset, text }) => match ended_at(offset.as_deref()) {
+            Ok(ended) => {
+                write_to_tsv(&tsv, &ended, &text.join(" "));
+            }
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                std::process::exit(2);
+            }
+        },
+        Some(Commands::Start { offset }) => match ended_at(offset.as_deref()) {
+            Ok(ended) => {
+                write_to_tsv(&tsv, &ended, "*~*~*--------------------");
+            }
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                std::process::exit(2);
+            }
+        },
         Some(Commands::Edit {}) => {
             // Get the value of the EDITOR environment variable
             let editor = match env::var("EDITOR") {
@@ -109,49 +130,32 @@ fn main() {
             }
 
             let status = command.status().expect("Failed to start editor process");
-
             if !status.success() {
                 eprintln!("Editor process failed with error code: {:?}", status.code());
             }
-            // match std::env::var("EDITOR") {
-            //     Ok(value) => {
-            //         println!("editor= '{}'", value);
-            //         // let mut args = vec![value.clone()];
-            //         // // path could have spaces, /Users/Clinton James/AppData/
-            //         // args.push(format!("\"{tsv}\""));
-            //         // if value.ends_with("vi") || value.ends_with("vim") {
-            //         //     // Open at the end of the file.
-            //         //     args.push(String::from("+$"));
-            //         // }
-            //         // println!("cmdline= '{}'", args.join(" "));
-            //
-            //         let mut cmd = Command::new(&value).arg(&tsv);
-            //         if value.ends_with("vi") || value.ends_with("vim") {
-            //             cmd.arg("+$");
-            //         }
-            //
-            //         cmd.status().expect("failed to execute process");
-            //     }
-            //     Err(e) => {
-            //         eprintln!("$EDITOR not found: {e}");
-            //         std::process::exit(1);
-            //     }
-            // }
         }
-        Some(Commands::Start { offset }) => {
-            println!("Start t={}, tsv={}", get_string(offset), tsv);
-        }
-        Some(Commands::Lines {}) => {
-            println!("Lines tsv={}", tsv);
+        Some(Commands::Pick {
+            dates,
+            range,
+            exclude,
+        }) => {
+            #[cfg(debug_assertions)]
+            println!(
+                "Lines tsv={}, dates={:?}, range={:?}, exclude={:?}",
+                tsv, dates, range, exclude
+            );
         }
         Some(Commands::Show {}) => {
+            #[cfg(debug_assertions)]
             println!("Show tsv={}", tsv);
         }
         Some(Commands::Summary {}) => {
+            #[cfg(debug_assertions)]
             println!("Summary tsv={}", tsv);
         }
         None => {
-            println!("Show current timing tsv={}", tsv);
+            #[cfg(debug_assertions)]
+            println!("Show current tsv={}", tsv);
         }
     }
 }

@@ -2,10 +2,11 @@
 name = "idid"
 version = "0.1.0"
 edition = "2021"
-about = "Record, edit, and view accomplishments."
+description = "Record, edit, and view what you did."
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+assert_approx_eq = "1.1.0"
 chrono = "0.4.35"
 clap = { version = "4.5.4", features = ["derive"] }
 rev_lines = "0.3.0"

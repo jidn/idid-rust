@@ -1,7 +1,8 @@
 // pub use crate::entry;
+use chrono::{DateTime, Local};
 use std::env;
 use std::fs;
-use std::io::{Error, ErrorKind};
+use std::io::{Error, ErrorKind, Write};
 use std::path::PathBuf;
 
 /// Get the path to a TSV file.
@@ -74,6 +75,27 @@ fn path_validate(path: &std::path::PathBuf, prefix: &str) -> Result<PathBuf, Err
             format!("{}does not exist: {}", prefix, file_path),
         ))
     }
+}
+
+pub fn write_to_tsv(path: &str, timestamp: &DateTime<Local>, text_to_append: &str) {
+    // Open the file in append mode or create it if it doesn't exist
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .expect("Failed to open file");
+
+    file.write_all(
+        timestamp
+            .format("%Y-%m-%d %H:%M:%S%:z")
+            .to_string()
+            .as_bytes(),
+    )
+    .expect("Failed to write timestamp to file");
+    file.write_all(b"\t").expect("Failed to write tab");
+    file.write_all(text_to_append.as_bytes())
+        .expect("Failed to write to file");
+    file.write_all(b"\n").expect("Failed to write line-feed");
 }
 
 #[cfg(test)]
