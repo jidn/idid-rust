@@ -87,8 +87,7 @@ pub fn write_to_tsv(path: &str, timestamp: &DateTime<FixedOffset>, text_to_appen
 
     file.write_all(
         timestamp
-            .format("%Y-%m-%d %H:%M:%S%:z")
-            .to_string()
+            .to_rfc3339_opts(chrono::SecondsFormat::Secs, false)
             .as_bytes(),
     )
     .expect("Failed to write timestamp to file");
