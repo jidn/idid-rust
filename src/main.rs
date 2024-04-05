@@ -1,10 +1,17 @@
+use crate::date_filter::DateFilter;
 use crate::util_time::current_datetime;
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, FixedOffset, NaiveDate};
 use clap::{Parser, Subcommand};
 use idid::write_to_tsv;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
+
+mod date_filter;
+mod date_parse;
+mod pick;
+mod time_parse;
+mod util_time;
 
 #[derive(Subcommand, Debug)]
 enum Commands {
@@ -18,7 +25,6 @@ enum Commands {
         /// Text to record
         #[arg(required = true)]
         text: Vec<String>,
-        // println!(idid::get_current_timestamp());
     },
     /// Edit TSV file using $EDITOR.
     Edit,
@@ -73,21 +79,12 @@ struct Cli {
     tsv: Option<PathBuf>,
 }
 
-fn get_string(option_str: Option<String>) -> String {
-    option_str.unwrap_or("NONE".to_string())
-}
-
 fn ended_at(offset: Option<&str>) -> Result<DateTime<FixedOffset>, String> {
     if offset.is_some() {
-        return timestamp::parse_time_adjustment(offset);
+        return time_parse::time_adjustment(offset);
     }
     Ok(current_datetime())
 }
-
-mod date_filter;
-mod pick;
-mod timestamp;
-mod util_time;
 
 fn main() {
     let cli = Cli::parse();
@@ -108,7 +105,7 @@ fn main() {
         },
         Some(Commands::Start { offset }) => match ended_at(offset.as_deref()) {
             Ok(ended) => {
-                write_to_tsv(&tsv, &ended, "*~*~*--------------------");
+                write_to_tsv(&tsv, &ended, pick::START_RECORDING);
             }
             Err(e) => {
                 eprintln!("Error: {}", e);
@@ -144,10 +141,15 @@ fn main() {
             range,
             exclude,
         }) => {
+            // Process dates and ranges using str_to_date
+            let parsed_dates = date_parse::strings_to_dates(&dates).unwrap();
+            let parsed_range = date_parse::strings_to_dates(&range).unwrap();
+            let _filter = DateFilter::new(&parsed_dates, &parsed_range);
+
             #[cfg(debug_assertions)]
             println!(
                 "Lines tsv={}, dates={:?}, range={:?}, exclude={:?}",
-                tsv, dates, range, exclude
+                tsv, parsed_dates, parsed_range, exclude
             );
         }
         Some(Commands::Show {}) => {

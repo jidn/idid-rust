@@ -2,7 +2,7 @@ use chrono::{DateTime, FixedOffset, NaiveDate};
 use rev_lines::RevLines;
 use std::fs::File;
 
-const START_RECORDING: &'static str = "*~*~*--------------------";
+pub const START_RECORDING: &'static str = "*~*~*--------------------";
 
 pub struct Entry {
     pub begin: Option<DateTime<FixedOffset>>,
@@ -19,6 +19,9 @@ pub struct Entry {
 /// An Entry with `cease` and `text`
 ///
 impl Entry {
+    pub fn duration() -> u32 {
+        0
+    }
     pub fn parse(input: &str) -> Result<Entry, String> {
         // Split the input string by tab character
         let mut parts = input.split('\t');
@@ -71,9 +74,6 @@ impl Entry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util_time::{current_datetime_reset, current_datetime_set};
-    use assert_approx_eq::assert_approx_eq;
-    use rstest::rstest;
 
     #[test]
     fn test_entry_parse() {

@@ -1,7 +1,8 @@
-use chrono::{DateTime, Datelike, Duration, NaiveDate};
+use crate::date_parse;
+use chrono::NaiveDate;
 
 #[derive(Debug)]
-struct DateFilter {
+pub struct DateFilter {
     date_ranges: Vec<(NaiveDate, NaiveDate)>,
     dates: Vec<NaiveDate>,
 
@@ -19,7 +20,7 @@ impl DateFilter {
     ///
     /// # Returns
     /// A new DateFilter
-    fn new(date_ranges: &[NaiveDate], individual_dates: &[NaiveDate]) -> Self {
+    pub fn new(date_ranges: &[NaiveDate], individual_dates: &[NaiveDate]) -> Self {
         let mut oldest_date: Option<NaiveDate> = None;
         let mut newest_date: Option<NaiveDate> = None;
 
@@ -81,7 +82,7 @@ impl DateFilter {
     /// # Returns
     /// `bool` if the given date matches either one of the struct dates
     /// or is in any of the inclusive date ranges.
-    fn is_date_match(&self, date: &NaiveDate) -> bool {
+    pub fn is_date_match(&self, date: &NaiveDate) -> bool {
         if let (Some(oldest), Some(newest)) = (self.oldest_date, self.newest_date) {
             if date < &oldest || date > &newest {
                 return false;
