@@ -1,4 +1,3 @@
-use crate::date_parse;
 use chrono::NaiveDate;
 
 #[derive(Debug)]
@@ -7,7 +6,7 @@ pub struct DateFilter {
     dates: Vec<NaiveDate>,
 
     // The oldest and newest date from dates or date_ranges
-    oldest_date: Option<NaiveDate>,
+    pub oldest_date: Option<NaiveDate>,
     newest_date: Option<NaiveDate>,
 }
 
@@ -113,7 +112,7 @@ mod tests {
         assert_eq!(filter.oldest_date, None);
         assert_eq!(filter.newest_date, None);
         assert_eq!(
-            filter.is_date_match(&NaiveDate::from_ymd_opt(2024, 4, 1).unwrap()),
+            filter.contains(&NaiveDate::from_ymd_opt(2024, 4, 1).unwrap()),
             false
         );
     }
@@ -122,8 +121,8 @@ mod tests {
     fn test_filter_only_dates() {
         let individual_dates = vec![ymd(2024, 3, 1), ymd(2024, 2, 1), ymd(2024, 4, 1)];
         let filter = DateFilter::new(&[], &individual_dates);
-        assert_eq!(filter.is_date_match(&ymd(2024, 3, 1)), true);
-        assert_eq!(filter.is_date_match(&ymd(2024, 1, 1)), false);
+        assert_eq!(filter.contains(&ymd(2024, 3, 1)), true);
+        assert_eq!(filter.contains(&ymd(2024, 1, 1)), false);
         assert_eq!(filter.oldest_date, filter.dates.first().cloned());
         assert_eq!(filter.newest_date, filter.dates.last().cloned());
     }
@@ -145,10 +144,10 @@ mod tests {
         let expected_newest = filter.date_ranges.last().map(|(_, end)| *end);
         assert_eq!(filter.newest_date, expected_newest);
 
-        assert_eq!(filter.is_date_match(&ymd(2024, 1, 1)), true);
-        assert_eq!(filter.is_date_match(&ymd(2024, 1, 10)), true);
-        assert_eq!(filter.is_date_match(&ymd(2024, 1, 5)), true);
-        assert_eq!(filter.is_date_match(&ymd(2024, 2, 1)), false);
+        assert_eq!(filter.contains(&ymd(2024, 1, 1)), true);
+        assert_eq!(filter.contains(&ymd(2024, 1, 10)), true);
+        assert_eq!(filter.contains(&ymd(2024, 1, 5)), true);
+        assert_eq!(filter.contains(&ymd(2024, 2, 1)), false);
     }
 
     #[test]
@@ -165,10 +164,10 @@ mod tests {
         assert_eq!(filter.oldest_date, Some(ymd(2024, 1, 1)));
         assert_eq!(filter.newest_date, Some(ymd(2024, 4, 1)));
 
-        assert_eq!(filter.is_date_match(&ymd(2024, 1, 5)), true);
-        assert_eq!(filter.is_date_match(&ymd(2024, 1, 1)), true);
-        assert_eq!(filter.is_date_match(&ymd(2024, 1, 10)), true);
-        assert_eq!(filter.is_date_match(&ymd(2024, 6, 1)), false);
+        assert_eq!(filter.contains(&ymd(2024, 1, 5)), true);
+        assert_eq!(filter.contains(&ymd(2024, 1, 1)), true);
+        assert_eq!(filter.contains(&ymd(2024, 1, 10)), true);
+        assert_eq!(filter.contains(&ymd(2024, 6, 1)), false);
     }
 
     fn ymd(year: i32, month: u32, day: u32) -> NaiveDate {

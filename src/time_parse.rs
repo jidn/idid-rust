@@ -47,17 +47,17 @@ pub fn time_adjustment(input: Option<&str>) -> Result<DateTime<FixedOffset>, Str
     }
 
     // Parse the HH[:MM]
-    let mut hour = 0;
+    let mut _hour = 0;
     let mut minute = 0;
     let parts: Vec<&str> = time_str.split(':').collect();
     match parts.len() {
         1 => {
             // parse [HH]
-            hour = parts[0].parse::<u32>().expect("invalid HH(am|mm) format"); //ok()?;
+            _hour = parts[0].parse::<u32>().expect("invalid HH(am|mm) format"); //ok()?;
         }
         2 => {
             // parse [HH, MM]
-            hour = parts[0].parse::<u32>().expect("invalid hours");
+            _hour = parts[0].parse::<u32>().expect("invalid hours");
             minute = parts[1].parse::<u32>().expect("invalid minutes");
         }
         _ => return Err("invalid HH[:MM](am|mm) format".to_string()),
@@ -66,19 +66,19 @@ pub fn time_adjustment(input: Option<&str>) -> Result<DateTime<FixedOffset>, Str
     if minute > 59 {
         return Err("invalid minutes".to_string());
     }
-    if hour > 23 {
+    if _hour > 23 {
         return Err("invalid hours".to_string());
     }
 
     let pm = input_str.ends_with("pm");
-    if hour > 11 && (pm || input_str.ends_with("am")) {
+    if _hour > 11 && (pm || input_str.ends_with("am")) {
         let am_pm_str = if pm { "pm" } else { "am" };
         return Err(format!("invalid hours with {:?}", am_pm_str));
     } else if pm {
-        hour += 12; // Convert to 24-hour format when using "pm"
+        _hour += 12; // Convert to 24-hour format when using "pm"
     }
 
-    Ok(local_timestamp(hour, minute))
+    Ok(local_timestamp(_hour, minute))
 }
 
 fn local_timestamp(hour: u32, minute: u32) -> DateTime<FixedOffset> {

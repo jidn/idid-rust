@@ -1,6 +1,6 @@
 use crate::date_filter::DateFilter;
 use crate::util_time::current_datetime;
-use chrono::{DateTime, FixedOffset, NaiveDate};
+use chrono::{DateTime, FixedOffset};
 use clap::{Parser, Subcommand};
 use idid::write_to_tsv;
 use std::env;
