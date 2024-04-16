@@ -21,7 +21,13 @@ pub struct Entry {
 
 impl fmt::Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}\t{}\t{}", self.begin, self.cease, self.text)
+        write!(
+            f,
+            "{}\t{}\t{}",
+            self.begin.to_rfc3339(),
+            self.cease.to_rfc3339(),
+            self.text
+        )
     }
 }
 
@@ -38,7 +44,14 @@ impl fmt::Debug for Entry {
 }
 
 impl Entry {
-    /// Get timestamp and test from a tab-separated value (TSV) line.
+    pub fn duration(&self) -> chrono::Duration {
+        self.cease - self.begin
+    }
+    pub fn hh_mm(&self) -> String {
+        hh_mm(&self.duration())
+    }
+
+    /// Get timestamp and text from a tab-separated value (TSV) line.
     ///
     /// # Arguments
     /// * `line` - A tab-separated string containing a rfc3339 timestamp and text.
@@ -238,6 +251,13 @@ pub fn pick<'a>(
     let filter_func = move |entry: &Entry| filter.contains(&entry.begin.date_naive());
 
     EntryIterator::new(buf_reader, filter_func, filter.oldest_date)
+}
+
+pub fn hh_mm(duration: &chrono::Duration) -> String {
+    let hours = duration.num_hours();
+    let minutes = duration.num_minutes() % 60; // Get remaining minutes after subtracting full hours
+
+    format!("{:02}:{:02}", hours, minutes)
 }
 
 #[cfg(test)]
