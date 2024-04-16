@@ -69,6 +69,13 @@ struct DateArgs {
     duration: bool,
 }
 
+/// Process dates and ranges using str_to_date
+fn date_filter_from_date_args(args: &DateArgs) -> DateFilter {
+    let parsed_dates = date_parse::strings_to_dates(&args.dates).unwrap();
+    let parsed_range = date_parse::strings_to_dates(&args.range).unwrap();
+    DateFilter::new(&parsed_range, &parsed_dates)
+}
+
 #[derive(Parser)]
 #[command(version, about, long_about)] // read from Cargo.toml
 #[command(arg_required_else_help = true)]
@@ -132,25 +139,14 @@ fn main() {
             }
         }
         Some(Commands::Pick(args)) => {
-            // Process dates and ranges using str_to_date
-            let parsed_dates = date_parse::strings_to_dates(&args.dates).unwrap();
-            let parsed_range = date_parse::strings_to_dates(&args.range).unwrap();
-            let filter = DateFilter::new(&parsed_range, &parsed_dates);
+            let filter = date_filter_from_date_args(args);
 
             #[cfg(debug_assertions)]
-            println!(
-                "Lines tsv={}, dates={:?}, range={:?}, filter={:?}",
-                &tsv, &parsed_dates, &parsed_range, &filter
-            );
+            println!("Lines tsv={}, args={:?}, filter={:?}", &tsv, &args, &filter);
 
             for entry in pick::pick(tsv, &filter) {
                 if args.duration {
-                    println!(
-                        "{}\t{}\t{}",
-                        entry.begin.to_rfc3339(),
-                        entry.hh_mm(),
-                        entry.text
-                    );
+                    println!("{}", entry.duration_display());
                 } else {
                     println!("{}", entry);
                 }
