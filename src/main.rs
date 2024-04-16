@@ -1,7 +1,7 @@
 use crate::date_filter::DateFilter;
 use crate::util_time::current_datetime;
 use chrono::{DateTime, FixedOffset};
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use idid::write_to_tsv;
 use std::env;
 use std::path::PathBuf;
@@ -36,35 +36,37 @@ enum Commands {
         offset: Option<String>,
     },
 
-    /// Pick entries for processing by starting date.
-    ///
-    Pick {
-        /// DATE can be any of:
-        ///
-        ///  -  Days before today. 0 is today and 1 is yesterday; max 999.
-        ///  -  Literal "today" or "yesterday".
-        ///  -  YYYYMMDD (dashes optinal).
-        ///  -  YYMMDD (leading 0, dashes optional) starting in the year 2000.
-        ///  -  Last MMDD (leading 0, dashes optinal); within 364ish days.
-        ///  -  Last week day with optional numeric suffix to add weeks.
-        ///     "mon" is last Monday and "mon1" goes back an additional week.
-        #[arg(value_name="DATE", num_args=0.., help="See --help for allowed formats.", verbatim_doc_comment)]
-        dates: Option<Vec<String>>,
-
-        /// Pick entries inclusive to range
-        #[arg(short = 'r', long, value_name = "DATE", num_args = 2)]
-        range: Option<Vec<String>>,
-
-        /// Exclude entries containing TEXT
-        #[arg(short = 'x', long, value_name = "TEXT")]
-        exclude: Option<Vec<String>>,
-    },
+    /// Pick entries and write to stdout.
+    Pick(DateArgs),
 
     /// Show accomplishments.
-    Show,
+    Show(DateArgs),
 
-    /// Summarize accomplishments.
-    Summary,
+    /// Total accomplishments, group by day
+    Total(DateArgs),
+}
+
+#[derive(Args, Debug)]
+struct DateArgs {
+    /// DATE can be any of:
+    ///
+    ///  -  Days before today. 0 is today and 1 is yesterday; max 999.
+    ///  -  Literal "today" or "yesterday".
+    ///  -  YYYYMMDD (dashes optinal).
+    ///  -  YYMMDD (leading 0, dashes optional) starting in the year 2000.
+    ///  -  Last MMDD (leading 0, dashes optinal); within 364ish days.
+    ///  -  Last week day with optional numeric suffix to add weeks.
+    ///     "mon" is last Monday and "mon1" goes back an additional week.
+    #[arg(value_name="DATE", num_args=0.., help="See --help for allowed formats.", verbatim_doc_comment)]
+    dates: Option<Vec<String>>,
+
+    /// Pick entries inclusive to range
+    #[arg(short = 'r', long, value_name = "DATE", num_args = 2)]
+    range: Option<Vec<String>>,
+
+    /// Show duration instead of timestamp
+    #[arg(short, long)]
+    duration: bool,
 }
 
 #[derive(Parser)]
@@ -79,13 +81,6 @@ struct Cli {
     tsv: Option<PathBuf>,
 }
 
-fn ended_at(offset: Option<&str>) -> Result<DateTime<FixedOffset>, String> {
-    if offset.is_some() {
-        return time_parse::time_adjustment(offset);
-    }
-    Ok(current_datetime())
-}
-
 fn main() {
     let cli = Cli::parse();
     let tsv: String = idid::get_tsv_path(cli.tsv)
@@ -93,7 +88,7 @@ fn main() {
         .to_string_lossy()
         .to_string();
 
-    match cli.command {
+    match &cli.command {
         Some(Commands::Add { offset, text }) => match ended_at(offset.as_deref()) {
             Ok(ended) => {
                 write_to_tsv(&tsv, &ended, &text.join(" "));
@@ -136,33 +131,55 @@ fn main() {
                 eprintln!("Editor process failed with error code: {:?}", status.code());
             }
         }
-        Some(Commands::Pick {
-            dates,
-            range,
-            exclude,
-        }) => {
+        Some(Commands::Pick(args)) => {
             // Process dates and ranges using str_to_date
-            let parsed_dates = date_parse::strings_to_dates(&dates).unwrap();
-            let parsed_range = date_parse::strings_to_dates(&range).unwrap();
-            let _filter = DateFilter::new(&parsed_dates, &parsed_range);
+            let parsed_dates = date_parse::strings_to_dates(&args.dates).unwrap();
+            let parsed_range = date_parse::strings_to_dates(&args.range).unwrap();
+            let filter = DateFilter::new(&parsed_range, &parsed_dates);
 
             #[cfg(debug_assertions)]
             println!(
-                "Lines tsv={}, dates={:?}, range={:?}, exclude={:?}",
-                tsv, parsed_dates, parsed_range, exclude
+                "Lines tsv={}, dates={:?}, range={:?}, filter={:?}",
+                &tsv, &parsed_dates, &parsed_range, &filter
+            );
+
+            for entry in pick::pick(tsv, &filter) {
+                if args.duration {
+                    println!(
+                        "{}\t{}\t{}",
+                        entry.begin.to_rfc3339(),
+                        entry.hh_mm(),
+                        entry.text
+                    );
+                } else {
+                    println!("{}", entry);
+                }
+            }
+        }
+        Some(Commands::Show(args)) => {
+            #[cfg(debug_assertions)]
+            println!(
+                "Show tsv={}, dates={:?}, range={:?}",
+                tsv, args.dates, args.range,
             );
         }
-        Some(Commands::Show {}) => {
+        Some(Commands::Total(args)) => {
             #[cfg(debug_assertions)]
-            println!("Show tsv={}", tsv);
-        }
-        Some(Commands::Summary {}) => {
-            #[cfg(debug_assertions)]
-            println!("Summary tsv={}", tsv);
+            println!(
+                "Total tsv={}, dates={:?}, range={:?}",
+                tsv, args.dates, args.range,
+            );
         }
         None => {
             #[cfg(debug_assertions)]
             println!("Show current tsv={}", tsv);
         }
     }
+}
+
+fn ended_at(offset: Option<&str>) -> Result<DateTime<FixedOffset>, String> {
+    if offset.is_some() {
+        return time_parse::time_adjustment(offset);
+    }
+    Ok(current_datetime())
 }
