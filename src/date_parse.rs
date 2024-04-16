@@ -36,13 +36,14 @@ pub fn date_from_str(format: &str) -> Result<NaiveDate, String> {
     let now = current_datetime().date_naive();
 
     #[cfg(debug_assertions)]
-    println!("date({:?}, {})", format, now);
+    println!("format={:?}, now={})", format, now);
 
     // All days before today and YYYY-MM-DD variants
     if format.chars().all(|c| c.is_digit(10) || c == '-') {
+        let value = numeric_to_date(format, Some(now));
         #[cfg(debug_assertions)]
-        println!("numeric_to_date");
-        return numeric_to_date(format, Some(now));
+        println!("numeric_to_date: {:?}", value.as_ref().expect("date"));
+        return value;
     }
 
     // Instead of forcing the full "yesterday", allow anything that starts
@@ -59,9 +60,14 @@ pub fn date_from_str(format: &str) -> Result<NaiveDate, String> {
     match format {
         "today" => Ok(now),
         _ => {
+            let value = last_dow(&lower_case, Some(now));
             #[cfg(debug_assertions)]
-            println!("last_dow({:?},...)", &lower_case);
-            last_dow(&lower_case, Some(now))
+            println!(
+                "last_dow {:?}: {:?}",
+                &lower_case,
+                value.as_ref().expect("date")
+            );
+            value
         }
     }
 }
@@ -289,6 +295,7 @@ mod tests {
             }
         }
     }
+
     #[rstest] // numeric_to_date with invalid input
     #[case("ABC", "invalid number of days past: ABC")]
     #[case("1000", "invalid day: 00")]

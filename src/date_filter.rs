@@ -89,7 +89,6 @@ impl DateFilter {
     /// `bool` if the given date matches either one of the struct dates
     /// or is in any of the inclusive date ranges.
     pub fn contains(&self, date: &NaiveDate) -> bool {
-        print!("contains {}", date);
         if let (Some(oldest), Some(newest)) = (self.oldest_date, self.newest_date) {
             if date < &oldest || &newest < date {
                 return false;
