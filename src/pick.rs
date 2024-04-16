@@ -31,24 +31,20 @@ impl fmt::Display for Entry {
     }
 }
 
-impl fmt::Debug for Entry {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Entry {{ begin: {}, cease: {}, text: {:?} }}",
-            self.begin.to_rfc3339(),
-            self.cease.to_rfc3339(),
-            self.text
-        )
-    }
-}
-
 impl Entry {
     pub fn duration(&self) -> chrono::Duration {
         self.cease - self.begin
     }
     pub fn hh_mm(&self) -> String {
         hh_mm(&self.duration())
+    }
+    pub fn duration_display(&self) -> String {
+        format!(
+            "{}\t{}\t{}",
+            self.begin.to_rfc3339(),
+            self.hh_mm(),
+            self.text
+        )
     }
 
     /// Get timestamp and text from a tab-separated value (TSV) line.
