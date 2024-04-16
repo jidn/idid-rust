@@ -7,7 +7,7 @@ pub struct DateFilter {
 
     // The oldest and newest date from dates or date_ranges
     pub oldest_date: Option<NaiveDate>,
-    newest_date: Option<NaiveDate>,
+    pub newest_date: Option<NaiveDate>,
 }
 
 impl DateFilter {
@@ -19,6 +19,13 @@ impl DateFilter {
     ///
     /// # Returns
     /// A new DateFilter
+    /// # Example
+    /// ```
+    /// let range = [];
+    /// let dates = [];
+    /// let filter = DateFilter::new(&range, &dates);
+    ///
+    /// ```
     pub fn new(date_ranges: &[NaiveDate], individual_dates: &[NaiveDate]) -> Self {
         let mut oldest_date: Option<NaiveDate> = None;
         let mut newest_date: Option<NaiveDate> = None;
@@ -82,18 +89,23 @@ impl DateFilter {
     /// `bool` if the given date matches either one of the struct dates
     /// or is in any of the inclusive date ranges.
     pub fn contains(&self, date: &NaiveDate) -> bool {
+        print!("contains {}", date);
         if let (Some(oldest), Some(newest)) = (self.oldest_date, self.newest_date) {
-            if date < &oldest || date > &newest {
+            if date < &oldest || &newest < date {
                 return false;
             }
         }
-
         self.dates.contains(date)
             || self
                 .date_ranges
                 .iter()
                 .any(|(begin, cease)| date >= begin && date <= cease)
     }
+}
+
+#[cfg(test)]
+pub fn ymd(year: i32, month: u32, day: u32) -> NaiveDate {
+    NaiveDate::from_ymd_opt(year, month, day).unwrap()
 }
 
 #[cfg(test)]
@@ -168,9 +180,5 @@ mod tests {
         assert_eq!(filter.contains(&ymd(2024, 1, 1)), true);
         assert_eq!(filter.contains(&ymd(2024, 1, 10)), true);
         assert_eq!(filter.contains(&ymd(2024, 6, 1)), false);
-    }
-
-    fn ymd(year: i32, month: u32, day: u32) -> NaiveDate {
-        NaiveDate::from_ymd_opt(year, month, day).unwrap()
     }
 }
