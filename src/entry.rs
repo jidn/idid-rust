@@ -38,13 +38,29 @@ impl Entry {
     pub fn hh_mm(&self) -> String {
         hh_mm(&self.duration())
     }
-    pub fn duration_display(&self) -> String {
-        format!(
-            "{}\t{}\t{}",
-            self.begin.to_rfc3339(),
-            self.hh_mm(),
-            self.text
-        )
+
+    /// Serialize as json or TSV
+    pub fn serialize(&self, in_seconds: &bool, json: bool) -> String {
+        let (label, value) = match in_seconds {
+            true => ("seconds", format!("{}", self.duration().num_seconds())),
+            false => ("duration", format!("\"{}\"", self.hh_mm())),
+        };
+        if json {
+            format!(
+                "{{\"begin\":\"{}\",\"{}\":{},\"text\":\"{}\"}}",
+                self.begin.to_rfc3339(),
+                label,
+                value,
+                escape_for_json(&self.text)
+            )
+        } else {
+            format!(
+                "{}\t{}\t{}",
+                self.begin.to_rfc3339(),
+                value.trim_start_matches('"').trim_end_matches('"'),
+                self.text
+            )
+        }
     }
 
     /// Get timestamp and text from a tab-separated value (TSV) line.
@@ -260,6 +276,21 @@ pub fn hh_mm(duration: &chrono::Duration) -> String {
     let minutes = duration.num_minutes() % 60; // Get remaining minutes after subtracting full hours
 
     format!("{:02}:{:02}", hours, minutes)
+}
+
+fn escape_for_json(text: &str) -> String {
+    let mut escaped_string = String::new();
+    for c in text.chars() {
+        match c {
+            '"' => escaped_string.push_str("\\\""),
+            '\\' => escaped_string.push_str("\\\\"),
+            '\n' => escaped_string.push_str("\\n"),
+            '\r' => escaped_string.push_str("\\r"),
+            '\t' => escaped_string.push_str("\\t"),
+            _ => escaped_string.push(c),
+        }
+    }
+    escaped_string
 }
 
 #[cfg(test)]
