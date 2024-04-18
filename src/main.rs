@@ -31,9 +31,11 @@ enum Commands {
 
     /// See duration from today's last entry or lines of TSV
     Last {
+        // #[arg(short = 'n', long, value_name = "LINES", default_value_t = 0)]
+        // lines: u32,
         /// See lines of TSV
-        #[arg(short = 'n', long, value_name = "LINES", default_value_t = 0)]
-        lines: u32,
+        #[arg(value_name = "LINES", help = "Number of LINES.")]
+        lines: Option<u32>,
     },
 
     /// Start recording time.
@@ -84,14 +86,10 @@ struct DateArgs {
     /// Pick entries inclusive of range
     #[arg(short = 'r', long, value_name = "DATE", num_args = 2)]
     range: Option<Vec<String>>,
-
-    /// Show duration instead of ending timestamp
-    #[arg(short, long)]
-    duration: bool,
 }
 
 #[derive(Parser)]
-#[command(version, about, long_about)] // read from Cargo.toml
+#[command(version, about, long_about, author)] // read from Cargo.toml
 #[command(arg_required_else_help = true)]
 struct Cli {
     #[command(subcommand)]
