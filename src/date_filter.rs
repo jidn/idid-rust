@@ -20,12 +20,12 @@ impl DateFilter {
     /// # Returns
     /// A new DateFilter
     /// # Example
-    /// ```
+    ///
+    /// use idid::date_filter::DateFilter;
     /// let range = [];
     /// let dates = [];
     /// let filter = DateFilter::new(&range, &dates);
     ///
-    /// ```
     pub fn new(date_ranges: &[NaiveDate], individual_dates: &[NaiveDate]) -> Self {
         let mut oldest_date: Option<NaiveDate> = None;
         let mut newest_date: Option<NaiveDate> = None;
@@ -78,6 +78,11 @@ impl DateFilter {
             oldest_date,
             newest_date,
         }
+    }
+
+    /// Are there any dates or ranges
+    pub fn is_empty(&self) -> bool {
+        self.dates.is_empty() && self.date_ranges.is_empty()
     }
 
     /// Does the given date match any of the dates or date_ranges

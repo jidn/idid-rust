@@ -1,16 +1,16 @@
-use crate::date_filter::DateFilter;
-use crate::util_time::current_datetime;
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, Duration, FixedOffset, NaiveDate};
 use clap::{Args, Parser, Subcommand};
-use idid::write_to_tsv;
+use std::collections::BTreeMap;
 use std::env;
+use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
+// use std::process;
 
 mod date_filter;
 mod date_parse;
-mod pick;
+mod entry;
 mod time_parse;
+mod tsv;
 mod util_time;
 
 #[derive(Subcommand, Debug)]
@@ -29,6 +29,13 @@ enum Commands {
     /// Edit TSV file using $EDITOR.
     Edit,
 
+    /// See duration from today's last entry or lines of TSV
+    Last {
+        /// See lines of TSV
+        #[arg(short = 'n', long, value_name = "LINES", default_value_t = 0)]
+        lines: u32,
+    },
+
     /// Start recording time.
     Start {
         /// WHEN minutes ago or time, ie "8am", "13:15", "4:55pm"
@@ -36,14 +43,17 @@ enum Commands {
         offset: Option<String>,
     },
 
-    /// Pick entries and write to stdout.
-    Pick(DateArgs),
-
     /// Show accomplishments.
     Show(DateArgs),
 
-    /// Total accomplishments, group by day
-    Total(DateArgs),
+    /// Sum accomplishments by day
+    Sum {
+        #[clap(flatten)]
+        args: DateArgs,
+        /// Show total after summing daily entries
+        #[arg(short, long)]
+        total: bool,
+    },
 }
 
 #[derive(Args, Debug)]
@@ -60,20 +70,13 @@ struct DateArgs {
     #[arg(value_name="DATE", num_args=0.., help="See --help for allowed formats.", verbatim_doc_comment)]
     dates: Option<Vec<String>>,
 
-    /// Pick entries inclusive to range
+    /// Pick entries inclusive of range
     #[arg(short = 'r', long, value_name = "DATE", num_args = 2)]
     range: Option<Vec<String>>,
 
-    /// Show duration instead of timestamp
+    /// Show duration instead of ending timestamp
     #[arg(short, long)]
     duration: bool,
-}
-
-/// Process dates and ranges using str_to_date
-fn date_filter_from_date_args(args: &DateArgs) -> DateFilter {
-    let parsed_dates = date_parse::strings_to_dates(&args.dates).unwrap();
-    let parsed_range = date_parse::strings_to_dates(&args.range).unwrap();
-    DateFilter::new(&parsed_range, &parsed_dates)
 }
 
 #[derive(Parser)]
@@ -83,14 +86,21 @@ struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
 
-    /// Use a custom TSV file instead of $ididTSV or $XDG_DATA_HOME
+    /// TSV file instead of $ididTSV or $XDG_DATA_HOME/idid/idid.tsv
     #[arg(long, value_name = "FILE")]
     tsv: Option<PathBuf>,
 }
 
+/// Process dates and ranges using str_to_date
+fn date_filter_from_date_args(args: &DateArgs) -> date_filter::DateFilter {
+    let parsed_dates = date_parse::strings_to_dates(&args.dates).unwrap();
+    let parsed_range = date_parse::strings_to_dates(&args.range).unwrap();
+    date_filter::DateFilter::new(&parsed_range, &parsed_dates)
+}
+
 fn main() {
     let cli = Cli::parse();
-    let tsv: String = idid::get_tsv_path(cli.tsv)
+    let tsv: String = tsv::get_tsv_path(&cli.tsv)
         .unwrap()
         .to_string_lossy()
         .to_string();
@@ -98,7 +108,11 @@ fn main() {
     match &cli.command {
         Some(Commands::Add { offset, text }) => match ended_at(offset.as_deref()) {
             Ok(ended) => {
-                write_to_tsv(&tsv, &ended, &text.join(" "));
+                if text.len() == 0 {
+                    eprintln!("Error: missing text");
+                    std::process::exit(1);
+                }
+                tsv::write_to_tsv(&tsv, &ended, &text.join(" "));
             }
             Err(e) => {
                 eprintln!("Error: {}", e);
@@ -107,7 +121,7 @@ fn main() {
         },
         Some(Commands::Start { offset }) => match ended_at(offset.as_deref()) {
             Ok(ended) => {
-                write_to_tsv(&tsv, &ended, pick::START_RECORDING);
+                tsv::write_to_tsv(&tsv, &ended, entry::START_RECORDING);
             }
             Err(e) => {
                 eprintln!("Error: {}", e);
@@ -124,7 +138,7 @@ fn main() {
                 }
             };
 
-            let mut command = Command::new(&editor);
+            let mut command = std::process::Command::new(&editor);
             command.arg(tsv);
 
             // Check if the editor is a vi variant
@@ -138,13 +152,65 @@ fn main() {
                 eprintln!("Editor process failed with error code: {:?}", status.code());
             }
         }
-        Some(Commands::Pick(args)) => {
-            let filter = date_filter_from_date_args(args);
+        Some(Commands::Last { lines }) => {
+            // #[cfg(debug_assertions)]
+            // println!("Show tsv={}, lines={:?}", &tsv, &lines,);
+            let file = fs::File::open(&tsv).expect("Failed to open TSV file");
+            let mut reverse_buffer = rev_lines::RevLines::new(file);
+            if *lines > 0 {
+                for _ in 0..*lines {
+                    if let Some(Ok(line)) = reverse_buffer.next() {
+                        println!("{}", line);
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                match reverse_buffer.next().expect("empty TSV") {
+                    Ok(tsv_line) => {
+                        let (timestamp, _) = entry::Entry::from_tsv(&tsv_line).unwrap();
+                        let now = util_time::current_datetime();
+                        if now.date_naive() == timestamp.date_naive() {
+                            let elapsed = now - timestamp;
+                            println!(
+                                "Elapsed: {:>2}:{:>02}",
+                                elapsed.num_hours(),
+                                elapsed.num_minutes() % 60
+                            );
+                        } else {
+                            #[cfg(debug_assertions)]
+                            println!("Last not today but {}", timestamp.date_naive());
+                        }
+                    }
+                    Err(e) => panic!("{}", e),
+                }
+                // let tuple_vec: Result<Vec<_>, _> = reverse_buffer
+                //     .take(2)
+                //     .map(|item| item.map_err(|e| e.to_string())) // Handle error conversion
+                //     .collect();
+                //
+                // // Check if the collection was successful
+                // match tuple_vec {
+                //     Ok(vec) => {
+                //         println!("{:?}", vec);
+                //     }
+                //     Err(err) => eprintln!("Error collecting tuples: {}", err),
+                // }
+            }
+        }
+        Some(Commands::Show(args)) => {
+            // #[cfg(debug_assertions)]
+            // println!(
+            //     "Show tsv={}, dates={:?}, range={:?}",
+            //     tsv, args.dates, args.range,
+            // );
+            let filter = date_filter_from_date_args(&args);
+            if filter.is_empty() {
+                eprintln!("Error: at least one of --dates or --range is required");
+                std::process::exit(1);
+            }
 
-            #[cfg(debug_assertions)]
-            println!("Lines tsv={}, args={:?}, filter={:?}", &tsv, &args, &filter);
-
-            for entry in pick::pick(tsv, &filter) {
+            for entry in entry::pick(tsv, &filter) {
                 if args.duration {
                     println!("{}", entry.duration_display());
                 } else {
@@ -152,23 +218,54 @@ fn main() {
                 }
             }
         }
-        Some(Commands::Show(args)) => {
-            #[cfg(debug_assertions)]
-            println!(
-                "Show tsv={}, dates={:?}, range={:?}",
-                tsv, args.dates, args.range,
-            );
-        }
-        Some(Commands::Total(args)) => {
-            #[cfg(debug_assertions)]
-            println!(
-                "Total tsv={}, dates={:?}, range={:?}",
-                tsv, args.dates, args.range,
-            );
+        Some(Commands::Sum { args, total }) => {
+            // #[cfg(debug_assertions)]
+            // println!(
+            //     "Sum cli.tsv={:?}, tsv={}, dates={:?}, range={:?}",
+            //     cli.tsv, tsv, args.dates, args.range,
+            // );
+
+            let filter = date_filter_from_date_args(&args);
+            let mut total_duration = Duration::zero();
+
+            if filter.is_empty() {
+                eprintln!("Error: at least one of --dates or --range is required");
+                std::process::exit(1);
+            }
+
+            // Sum all entry durations by day
+            let mut daily_durations: BTreeMap<NaiveDate, Duration> = BTreeMap::new();
+            for entry in entry::pick(tsv, &filter) {
+                let date = entry.begin.date_naive();
+                let duration = entry.cease - entry.begin;
+
+                let day_duration = daily_durations.entry(date).or_insert(Duration::zero());
+                *day_duration = *day_duration + duration;
+                total_duration = total_duration + duration;
+            }
+
+            // Print all the durations by day
+            for (date, duration) in &daily_durations {
+                println!(
+                    "{}  {:>4}:{:>02}",
+                    date.format("%Y-%m-%d %a"),
+                    duration.num_hours(),
+                    duration.num_minutes() % 60
+                );
+            }
+
+            if *total && total_duration.num_minutes() > 0 {
+                println!(
+                    "{:>14}  {:>4}:{:>02}",
+                    "Total",
+                    total_duration.num_hours(),
+                    total_duration.num_minutes() % 60,
+                );
+            }
         }
         None => {
             #[cfg(debug_assertions)]
-            println!("Show current tsv={}", tsv);
+            println!("None: current tsv={}", tsv);
         }
     }
 }
@@ -177,5 +274,5 @@ fn ended_at(offset: Option<&str>) -> Result<DateTime<FixedOffset>, String> {
     if offset.is_some() {
         return time_parse::time_adjustment(offset);
     }
-    Ok(current_datetime())
+    Ok(util_time::current_datetime())
 }

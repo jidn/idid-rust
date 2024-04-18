@@ -14,6 +14,7 @@ pub fn strings_to_dates(dates: &Option<Vec<String>>) -> Result<Vec<NaiveDate>, S
     }
     Ok(parsed)
 }
+
 /// Create a date relative to the current date and time.
 ///
 /// # Arguments
@@ -36,7 +37,7 @@ pub fn date_from_str(format: &str) -> Result<NaiveDate, String> {
     let now = current_datetime().date_naive();
 
     #[cfg(debug_assertions)]
-    println!("format={:?}, now={})", format, now);
+    println!("format={:?}, now={}", format, now);
 
     // All days before today and YYYY-MM-DD variants
     if format.chars().all(|c| c.is_digit(10) || c == '-') {
@@ -59,16 +60,7 @@ pub fn date_from_str(format: &str) -> Result<NaiveDate, String> {
 
     match format {
         "today" => Ok(now),
-        _ => {
-            let value = last_dow(&lower_case, Some(now));
-            #[cfg(debug_assertions)]
-            println!(
-                "last_dow {:?}: {:?}",
-                &lower_case,
-                value.as_ref().expect("date")
-            );
-            value
-        }
+        _ => last_dow(&lower_case, Some(now)),
     }
 }
 
@@ -345,22 +337,12 @@ mod tests {
 
     #[test]
     fn test_date_parse_dow_bad_input() {
-        let input = "xyz";
-        match date_from_str(input) {
-            Ok(_) => {
-                // Test fails if the result is Ok (unexpected)
-                panic!("Expected Err but got Ok");
-            }
-            Err(err) => {
-                // Test passes if the result is Err and the error message matches the expected value
-                let expected =
-                    "invalid day of the week abbreviation; use: mon, tue, wed, thu, fri, sat, sun";
-                assert_eq!(
-                    expected, err,
-                    "input={:?}, expected={:?}, actual={:?}",
-                    input, expected, err
-                );
-            }
-        }
+        assert_eq!(
+            date_from_str("xyz"),
+            Err(
+                "invalid day of the week abbreviation; use: mon, tue, wed, thu, fri, sat, sun"
+                    .to_string()
+            )
+        );
     }
 }

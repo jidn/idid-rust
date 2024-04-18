@@ -56,14 +56,13 @@ impl Entry {
     /// timestamp and text
     ///
     /// # Examples
-    /// ```
-    /// use idid::Entry;
+    ///
+    /// use idid::entry;
     ///
     /// let line = "2024-04-01T12:00:00+00:00\tSample text";
-    /// let entry = Entry::from_tsv(line).unwrap();
+    /// let entry = entry::Entry::from_tsv(line).unwrap();
     /// assert_eq!(entry.1, "Sample text");
-    /// ```
-    fn from_tsv(line: &str) -> Result<(chrono::DateTime<FixedOffset>, String), String> {
+    pub fn from_tsv(line: &str) -> Result<(chrono::DateTime<FixedOffset>, String), String> {
         let mut parts = line.splitn(2, '\t');
         let when_str = parts.next().expect("TSV line.");
         let when = DateTime::parse_from_rfc3339(when_str).expect("rfc3339");
@@ -98,20 +97,31 @@ where
 /// last_line: The timestamp and text from previous entry.
 ///
 /// # Example
-/// ```
-/// let tsv = RevLines::new(...);
-/// let iterator = EntryIterator {
+/// use idid::entry;
+/// use rev_lines;
+///
+/// let tsv = rev_lines::RevLines::new(...);
+/// let iterator = entry::EntryIterator {
 ///     lines: &tsv,
 ///     filter: |_| true,
 ///     oldest: None,
 ///     last_line: None,
 /// };
-/// let filter=DateFilter::new(...);
-/// iterator = EntryIterator::new(&tsv, &filter);
+///
+/// You can also use a DateFilter.
+///
+/// use idid::date_filter;
+/// use idid::entry;
+/// use rev_lines;
+///
+/// let tsv = rev_lines::RevLines::new(...);
+/// let filter = date_filter::DateFilter(&[], &[]);
+/// let iterator = entry::EntryIterator::new(&tsv, &filter);
+///
 /// for entry in iterator {
 ///     println!(entry);
 /// }
-/// ```
+///
 impl<F, R> EntryIterator<F, R>
 where
     F: FnMut(&Entry) -> bool,
@@ -127,23 +137,20 @@ where
     /// * `filter` - The filter function to apply to entries.
     /// * `oldest` - Optional oldest date for filtering entries.
     ///
-    /// ```
-    /// use idid::{EntryIterator, Entry};
-    /// use chrono::{DateTime, FixedOffset};
+    /// use idid::entry::{Entry, EntryIterator};
     ///
     /// let source = concat!(
     ///     "2024-04-01T08:00:00Z\t*~*~*--------------------\n",
     ///     "2024-04-01T12:00:00Z\tSample text\n",
     ///     "2024-04-02T12:15:00Z\tAnother entry");
-    /// let oldest_date = chrono::NaiveDate::from_ymd(2024, 4, 1);
-    /// let filter_func = |entry: &Entry| entry.text.contains("Sample");
+    /// let oldest = chrono::NaiveDate::from_ymd_opt(2024, 4, 1);
+    /// let filter = |entry: &Entry| entry.text.contains("Sample");
     ///
-    /// let iter = EntryIterator::new(source.as_bytes(), filter_func, Some(oldest_date));
+    /// let iter = EntryIterator::new(source.as_bytes(), filter, Some(oldest));
     ///
     /// for entry in iter {
     ///     println!("{:?}", entry);
     /// }
-    /// ```
     pub fn new(source: R, filter: F, oldest: Option<chrono::NaiveDate>) -> Self {
         Self {
             lines: RevLines::new(source),
@@ -218,9 +225,9 @@ where
 ///
 /// # Examples
 ///
-/// ```
 /// use chrono::NaiveDate;
-/// use idid::{DateFilter, EntryIterator, pick};
+/// use date_filter::DateFilter;
+/// use entry::pick;
 ///
 /// let input = concat!(
 ///     "2024-04-01T08:00:00Z\t*~*~*--------------------\n",
@@ -231,7 +238,6 @@ where
 /// for entry in pick(input, &filter){
 ///     println!("{:?}", entry);
 /// }
-/// ```
 pub fn pick<'a>(
     input: impl Into<String>,
     filter: &'a DateFilter,
