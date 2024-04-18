@@ -44,7 +44,18 @@ enum Commands {
     },
 
     /// Show accomplishments.
-    Show(DateArgs),
+    Show {
+        #[clap(flatten)]
+        args: DateArgs,
+
+        /// Show duration in seconds
+        #[arg(short, long)]
+        seconds: bool,
+
+        /// Json output
+        #[arg(long)]
+        json: bool,
+    },
 
     /// Sum accomplishments by day
     Sum {
@@ -153,12 +164,10 @@ fn main() {
             }
         }
         Some(Commands::Last { lines }) => {
-            // #[cfg(debug_assertions)]
-            // println!("Show tsv={}, lines={:?}", &tsv, &lines,);
             let file = fs::File::open(&tsv).expect("Failed to open TSV file");
             let mut reverse_buffer = rev_lines::RevLines::new(file);
-            if *lines > 0 {
-                for _ in 0..*lines {
+            if lines.is_some() {
+                for _ in 0..lines.unwrap() {
                     if let Some(Ok(line)) = reverse_buffer.next() {
                         println!("{}", line);
                     } else {
@@ -198,12 +207,11 @@ fn main() {
                 // }
             }
         }
-        Some(Commands::Show(args)) => {
-            // #[cfg(debug_assertions)]
-            // println!(
-            //     "Show tsv={}, dates={:?}, range={:?}",
-            //     tsv, args.dates, args.range,
-            // );
+        Some(Commands::Show {
+            args,
+            seconds,
+            json,
+        }) => {
             let filter = date_filter_from_date_args(&args);
             if filter.is_empty() {
                 eprintln!("Error: at least one of --dates or --range is required");
@@ -211,20 +219,10 @@ fn main() {
             }
 
             for entry in entry::pick(tsv, &filter) {
-                if args.duration {
-                    println!("{}", entry.duration_display());
-                } else {
-                    println!("{}", entry);
-                }
+                println!("{}", entry.serialize(&seconds, *json));
             }
         }
         Some(Commands::Sum { args, total }) => {
-            // #[cfg(debug_assertions)]
-            // println!(
-            //     "Sum cli.tsv={:?}, tsv={}, dates={:?}, range={:?}",
-            //     cli.tsv, tsv, args.dates, args.range,
-            // );
-
             let filter = date_filter_from_date_args(&args);
             let mut total_duration = Duration::zero();
 
