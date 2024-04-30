@@ -1,3 +1,4 @@
+use chrono::SubsecRound;
 use chrono::{DateTime, Duration, FixedOffset, NaiveDate};
 use clap::{Args, Parser, Subcommand};
 use std::collections::BTreeMap;
@@ -131,6 +132,9 @@ fn main() {
         Some(Commands::Start { offset }) => match ended_at(offset.as_deref()) {
             Ok(ended) => {
                 tsv::write_to_tsv(&tsv, &ended, entry::START_RECORDING);
+                if offset.is_some() {
+                    println!("  Started at {}", ended.time().round_subsecs(0));
+                }
             }
             Err(e) => {
                 eprintln!("Error: {}", e);
