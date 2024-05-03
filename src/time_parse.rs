@@ -40,7 +40,7 @@ pub fn time_adjustment(input: Option<&str>) -> Result<DateTime<FixedOffset>, Str
         .trim_end_matches("pm")
         .trim();
 
-    let digits_and_colon = time_str.chars().all(|c| c.is_digit(10) || c == ':');
+    let digits_and_colon = time_str.chars().all(|c| c.is_ascii_digit() || c == ':');
     if !digits_and_colon {
         return Err("invalid HH[:MM](am|mm) format".to_string());
     }

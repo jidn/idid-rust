@@ -43,7 +43,7 @@ impl DateFilter {
         }
 
         let mut processed_ranges = Vec::new();
-        if date_ranges.len() > 0 {
+        if !date_ranges.is_empty() {
             for pair in date_ranges.chunks_exact(2) {
                 let (start, end) = match pair {
                     [start, end] => (*start, *end),

@@ -9,7 +9,7 @@ use std::io;
 pub trait BufReadSeek: io::BufRead + io::Seek {}
 impl<T: io::BufRead + io::Seek> BufReadSeek for T {}
 
-pub const START_RECORDING: &'static str = "*~*~*--------------------";
+pub const START_RECORDING: &str = "*~*~*--------------------";
 
 /// An entry with a begin timestamp, cease timestamp, and associated text.
 #[derive(Clone)]
@@ -186,7 +186,8 @@ where
 
     /// Get the next matching entry.
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(line) = self.lines.next() {
+        // while let Some(line) = self.lines.next() {
+        for line in self.lines.by_ref() {
             let line = line.unwrap().trim().to_string();
             // println!("line={:?}", line);
 
@@ -254,10 +255,10 @@ where
 /// for entry in pick(input, &filter){
 ///     println!("{:?}", entry);
 /// }
-pub fn pick<'a>(
+pub fn pick(
     input: impl Into<String>,
-    filter: &'a DateFilter,
-) -> EntryIterator<impl FnMut(&Entry) -> bool + 'a, impl BufReadSeek> {
+    filter: &DateFilter,
+) -> EntryIterator<impl FnMut(&Entry) -> bool + '_, impl BufReadSeek> {
     let input_str = input.into();
     let buf_reader: Box<dyn BufReadSeek> = if input_str.contains('\t') {
         Box::new(io::Cursor::new(input_str))

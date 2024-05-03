@@ -6,8 +6,6 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-use idid;
-
 mod date_parse;
 mod time_parse;
 mod util_time;
@@ -129,7 +127,7 @@ fn main() {
             text,
         }) => match ended_at(offset.as_deref()) {
             Ok(ended) => {
-                if text.len() == 0 {
+                if text.is_empty() {
                     eprintln!("Error: missing text");
                     std::process::exit(1);
                 }
@@ -146,7 +144,7 @@ fn main() {
                 } else if !quiet {
                     print!(
                         "{} for {}:{:>02}.  ",
-                        ended.format("%a %I:%M %p").to_string(),
+                        ended.format("%a %I:%M %p"),
                         elapsed.num_hours(),
                         elapsed.num_minutes() % 60,
                     );
@@ -240,18 +238,18 @@ fn main() {
             seconds,
             json,
         }) => {
-            let filter = date_filter_from_date_args(&args);
+            let filter = date_filter_from_date_args(args);
             if filter.is_empty() {
                 eprintln!("Error: at least one of --dates or --range is required");
                 std::process::exit(1);
             }
 
             for entry in idid::pick(tsv, &filter) {
-                println!("{}", entry.serialize(&seconds, *json));
+                println!("{}", entry.serialize(seconds, *json));
             }
         }
         Some(Commands::Sum { args, total }) => {
-            let filter = date_filter_from_date_args(&args);
+            let filter = date_filter_from_date_args(args);
             let mut total_duration = Duration::zero();
 
             if filter.is_empty() {
@@ -266,8 +264,8 @@ fn main() {
                 let duration = entry.cease - entry.begin;
 
                 let day_duration = daily_durations.entry(date).or_insert(Duration::zero());
-                *day_duration = *day_duration + duration;
-                total_duration = total_duration + duration;
+                *day_duration += duration;
+                total_duration += duration;
             }
 
             // Print all the durations by day
@@ -339,7 +337,7 @@ fn praise() {
 }
 
 fn get_last_entry_timestamp(tsv: &str) -> Result<DateTime<FixedOffset>, String> {
-    let file = fs::File::open(&tsv).expect("Failed to open TSV file");
+    let file = fs::File::open(tsv).expect("Failed to open TSV file");
     let mut reverse_buffer = rev_lines::RevLines::new(file);
     match reverse_buffer.next().expect("empty TSV") {
         Ok(tsv_line) => {

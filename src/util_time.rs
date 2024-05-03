@@ -2,7 +2,7 @@ use chrono::{DateTime, FixedOffset, Local};
 use std::cell::RefCell;
 
 thread_local! {
-    static FIXED_TIME: RefCell<Option<DateTime<FixedOffset>>> = RefCell::new(None);
+    static FIXED_TIME: RefCell<Option<DateTime<FixedOffset>>> = const { RefCell::new(None) };
 }
 
 pub(crate) fn current_datetime() -> DateTime<FixedOffset> {

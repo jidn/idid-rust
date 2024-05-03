@@ -20,7 +20,7 @@ use crate::entry;
 ///        If the file doesn't exist, it will attempt to create it.
 pub fn get_tsv_path(tsv: &Option<std::path::PathBuf>) -> Result<PathBuf, Error> {
     match tsv {
-        Some(path) => is_existing_file(&path, "--tsv "),
+        Some(path) => is_existing_file(path, "--tsv "),
         _ => {
             let idid_tsv = "ididTSV";
             // Existing "ididTSV" environment variable contains absolute path
@@ -58,12 +58,12 @@ pub fn get_tsv_path(tsv: &Option<std::path::PathBuf>) -> Result<PathBuf, Error> 
 }
 
 /// Check the path exists and it is a file.
-fn is_existing_file(path: &std::path::PathBuf, prefix: &str) -> Result<PathBuf, Error> {
-    let file_path = path.to_string_lossy().to_owned();
+fn is_existing_file(path: &std::path::Path, prefix: &str) -> Result<PathBuf, Error> {
+    let file_path = path.to_string_lossy().clone();
     if path.exists() {
         if path.is_file() {
             // Return the path if it exists and is a file
-            Ok(path.clone())
+            Ok(path.to_path_buf())
         } else {
             Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -89,7 +89,7 @@ pub fn write_to_tsv(path: &str, timestamp: &DateTime<FixedOffset>, user_text: Op
     let mut file = fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open(&path)
+        .open(path)
         .expect("Failed to open file");
 
     // Write the timestamp

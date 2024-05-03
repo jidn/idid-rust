@@ -9,7 +9,7 @@ pub fn strings_to_dates(dates: &Option<Vec<String>>) -> Result<Vec<NaiveDate>, S
     let mut parsed: Vec<NaiveDate> = Vec::new();
     if let Some(vec) = dates {
         for date_str in vec {
-            match date_from_str(&date_str) {
+            match date_from_str(date_str) {
                 Ok(date) => parsed.push(date),
                 Err(err) => return Err(format!("Invalid {}: {}", date_str, err)),
             }
@@ -43,7 +43,7 @@ pub fn date_from_str(format: &str) -> Result<NaiveDate, String> {
     println!("format={:?}, now={}", format, now);
 
     // All days before today and YYYY-MM-DD variants
-    if format.chars().all(|c| c.is_digit(10) || c == '-') {
+    if format.chars().all(|c| c.is_ascii_digit() || c == '-') {
         let value = numeric_to_date(format, Some(now));
         #[cfg(debug_assertions)]
         println!("numeric_to_date: {:?}", value.as_ref().expect("date"));
@@ -91,13 +91,13 @@ pub fn numeric_to_date(
     input: &str,
     reference_date: Option<NaiveDate>,
 ) -> Result<NaiveDate, String> {
-    let today = reference_date.unwrap_or_else(|| local_naive_date());
+    let today = reference_date.unwrap_or_else(local_naive_date);
 
     // remove any dashes
-    let dashless = input.replace("-", "");
+    let dashless = input.replace('-', "");
 
     match dashless.len() {
-        1 | 2 | 3 => {
+        1..=3 => {
             // Interpret input as number of days before the reference date
             let days_before = dashless
                 .parse::<i64>()
@@ -130,7 +130,7 @@ pub fn numeric_to_date(
             if year < 1 {
                 return Err(format!("invalid year: {}", year_str));
             }
-            let from_input = MonthDay::from_str(&month_day_str)?;
+            let from_input = MonthDay::from_str(month_day_str)?;
 
             NaiveDate::from_ymd_opt(year, from_input.month, from_input.day)
                 .ok_or_else(|| format!("invalid date: {}", &input))
@@ -172,7 +172,7 @@ fn last_dow(input: &str, reference_date: Option<NaiveDate>) -> Result<NaiveDate,
     };
 
     // Calculate the day of the week based on today's date
-    let today = reference_date.unwrap_or_else(|| local_naive_date());
+    let today = reference_date.unwrap_or_else(local_naive_date);
     // 0 - Monday, 1 - Tuesday, ..., 6 - Sunday
     let days_from_monday = today.weekday().num_days_from_monday();
     if target_day == days_from_monday {
@@ -204,9 +204,9 @@ impl MonthDay {
             .parse::<u32>()
             .map_err(|e| format!("invalid day: {}", e))?;
 
-        if month < 1 || month > 12 {
+        if !(1..=12).contains(&month) {
             return Err(format!("invalid month: {}", &input[0..2]));
-        } else if day < 1 || day > 31 {
+        } else if !(1..=31).contains(&day) {
             return Err(format!("invalid day: {}", &input[2..4]));
         }
 
