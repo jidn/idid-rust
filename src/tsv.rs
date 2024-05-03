@@ -4,6 +4,8 @@ use std::fs;
 use std::io::{Error, ErrorKind, Write};
 use std::path::PathBuf;
 
+use crate::entry;
+
 /// Get the path to a TSV file.
 ///
 /// Confirm the path exists and is a file.
@@ -76,7 +78,13 @@ fn is_existing_file(path: &std::path::PathBuf, prefix: &str) -> Result<PathBuf, 
     }
 }
 
-pub fn write_to_tsv(path: &str, timestamp: &DateTime<FixedOffset>, text_to_append: &str) {
+/// Write to the TSV
+///
+/// # Arguments
+/// * `path` to the TSV. Use `get_tsv_path()`
+/// * `timestamp` the time to record
+/// * `text` the user given text or the start-of-the-day without text
+pub fn write_to_tsv(path: &str, timestamp: &DateTime<FixedOffset>, user_text: Option<&str>) {
     // Open the file in append mode or create it if it doesn't exist
     let mut file = fs::OpenOptions::new()
         .create(true)
@@ -84,6 +92,7 @@ pub fn write_to_tsv(path: &str, timestamp: &DateTime<FixedOffset>, text_to_appen
         .open(&path)
         .expect("Failed to open file");
 
+    // Write the timestamp
     file.write_all(
         timestamp
             .to_rfc3339_opts(chrono::SecondsFormat::Secs, false)
@@ -91,7 +100,12 @@ pub fn write_to_tsv(path: &str, timestamp: &DateTime<FixedOffset>, text_to_appen
     )
     .expect("Failed to write timestamp to file");
     file.write_all(b"\t").expect("Failed to write tab");
-    file.write_all(text_to_append.as_bytes())
+
+    let text = match user_text {
+        Some(text) => text,
+        None => entry::START_RECORDING,
+    };
+    file.write_all(text.as_bytes())
         .expect("Failed to write to file");
     file.write_all(b"\n").expect("Failed to write line-feed");
 }
@@ -127,7 +141,7 @@ mod tests {
         env::set_var(env_vars[0], &file_path);
         env::remove_var(env_vars[1]);
 
-        let result = get_tsv_path(None::<PathBuf>);
+        let result = get_tsv_path(&None::<PathBuf>);
 
         // Restore the original values of the environment variables or delete
         // them if they didn't exist before
@@ -169,7 +183,7 @@ mod tests {
         env::set_var(env_vars[1], &temp_dir);
         env::remove_var(env_vars[0]);
 
-        let result = get_tsv_path(None::<PathBuf>);
+        let result = get_tsv_path(&None::<PathBuf>);
 
         // Restore the original values of the environment variables or delete
         // them if they didn't exist before

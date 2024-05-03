@@ -5,7 +5,6 @@ use chrono::{DateTime, Duration, FixedOffset, NaiveTime};
 ///
 /// # Arguments
 ///
-/// * `input` - A optional string slice representing a time. Formats include:
 ///    - `MINUTES`, ie "30" minutes in the past.
 ///    - "HH:MM" ie "7:30" or "14:00" in 24 hour time.
 ///    - "HH[:MM](am|pm)" ie "8am", "8:15am", "1:30pm", or "5pm".
@@ -90,6 +89,7 @@ fn local_timestamp(hour: u32, minute: u32) -> DateTime<FixedOffset> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::util_time::{current_datetime_reset, current_datetime_set};
     use assert_approx_eq::assert_approx_eq;
     use rstest::rstest;
 
@@ -100,10 +100,7 @@ mod tests {
     #[case("7:30pm", local_timestamp(19, 30))]
     #[case("8am", local_timestamp(8, 0))]
     #[case("8pm", local_timestamp(20, 0))]
-    fn test_date_parse_time_adjustment(
-        #[case] input: &str,
-        #[case] expected: DateTime<FixedOffset>,
-    ) {
+    fn test_time_adjustment(#[case] input: &str, #[case] expected: DateTime<FixedOffset>) {
         match time_adjustment(Some(input)) {
             Ok(actual) => {
                 eprintln!(
@@ -130,7 +127,7 @@ mod tests {
     #[case("13pm", "invalid hours with \"pm\"")]
     #[case("1jk", "invalid HH[:MM](am|mm) format")]
     #[case("1:30jk", "invalid HH[:MM](am|mm) format")]
-    fn test_date_parse_time_adjustment_bad_input(#[case] input: &str, #[case] expected: &str) {
+    fn test_time_adjustment_bad_input(#[case] input: &str, #[case] expected: &str) {
         match time_adjustment(Some(input)) {
             Ok(_) => {
                 // Test fails if the result is Ok (unexpected)
@@ -145,5 +142,17 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_time_adjustment_none() {
+        let set_time = DateTime::parse_from_rfc3339("2024-04-01T12:15:30+05:00").unwrap();
+        current_datetime_set(set_time);
+
+        // When I give none, I should give the current time.
+        let found_datetime = time_adjustment(None).expect("Should be current time.");
+        current_datetime_reset();
+
+        assert_eq!(set_time, found_datetime);
     }
 }

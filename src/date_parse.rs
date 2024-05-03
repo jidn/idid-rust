@@ -1,6 +1,9 @@
 use crate::util_time::current_datetime;
 use chrono::{Datelike, Duration, NaiveDate};
 
+/// Create a vector of NaiveDate from strings
+///
+/// See date_from_str for format details.
 pub fn strings_to_dates(dates: &Option<Vec<String>>) -> Result<Vec<NaiveDate>, String> {
     // Process dates and ranges using str_to_date
     let mut parsed: Vec<NaiveDate> = Vec::new();
