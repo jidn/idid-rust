@@ -1,7 +1,6 @@
-use chrono::{DateTime, Duration, FixedOffset, NaiveDate};
+use chrono::{DateTime, Duration, FixedOffset};
 use clap::{Args, Parser, Subcommand};
 use rand::seq::SliceRandom;
-use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -63,15 +62,6 @@ enum Commands {
         /// Json output
         #[arg(long)]
         json: bool,
-    },
-
-    /// Sum accomplishments by day
-    Sum {
-        #[clap(flatten)]
-        args: DateArgs,
-        /// Show total after summing daily entries
-        #[arg(short, long)]
-        total: bool,
     },
 }
 
@@ -246,45 +236,6 @@ fn main() {
 
             for entry in idid::pick(tsv, &filter) {
                 println!("{}", entry.serialize(seconds, *json));
-            }
-        }
-        Some(Commands::Sum { args, total }) => {
-            let filter = date_filter_from_date_args(args);
-            let mut total_duration = Duration::zero();
-
-            if filter.is_empty() {
-                eprintln!("Error: at least one of --dates or --range is required");
-                std::process::exit(1);
-            }
-
-            // Sum all entry durations by day
-            let mut daily_durations: BTreeMap<NaiveDate, Duration> = BTreeMap::new();
-            for entry in idid::pick(tsv, &filter) {
-                let date = entry.begin.date_naive();
-                let duration = entry.cease - entry.begin;
-
-                let day_duration = daily_durations.entry(date).or_insert(Duration::zero());
-                *day_duration += duration;
-                total_duration += duration;
-            }
-
-            // Print all the durations by day
-            for (date, duration) in &daily_durations {
-                println!(
-                    "{}  {:>4}:{:>02}",
-                    date.format("%Y-%m-%d %a"),
-                    duration.num_hours(),
-                    duration.num_minutes() % 60
-                );
-            }
-
-            if *total && total_duration.num_minutes() > 0 {
-                println!(
-                    "{:>14}  {:>4}:{:>02}",
-                    "Total",
-                    total_duration.num_hours(),
-                    total_duration.num_minutes() % 60,
-                );
             }
         }
         None => {
