@@ -32,9 +32,7 @@ enum Commands {
 
     /// See duration from today's last entry or lines of TSV
     Last {
-        // #[arg(short = 'n', long, value_name = "LINES", default_value_t = 0)]
-        // lines: u32,
-        /// See lines of TSV
+        /// See the last LINES of TSV
         #[arg(value_name = "LINES", help = "Number of LINES.")]
         lines: Option<u32>,
     },
@@ -103,6 +101,49 @@ fn date_filter_from_date_args(args: &DateArgs) -> idid::DateFilter {
     idid::DateFilter::new(&parsed_range, &parsed_dates)
 }
 
+fn add_text(
+    tsv: &str,
+    offset: &Option<String>,
+    quiet: &bool,
+    text: &Vec<String>,
+) -> Result<bool, String> {
+    match ended_at(offset.as_deref()) {
+        Ok(ended) => {
+            if text.is_empty() {
+                eprintln!("Error: missing text");
+                std::process::exit(1);
+            }
+            let timestamp = get_last_entry_timestamp(&tsv).expect("Bad last entry");
+            idid::write_to_tsv(&tsv, &ended, Some(&text.join(" ")));
+            let duration = current_datetime() - timestamp;
+            if duration > Duration::hours(12) {
+                println!(
+                    "WARNING: elapsed time from last is {:>2}:{:>02}",
+                    duration.num_hours(),
+                    duration.num_minutes() % 60
+                );
+            } else if !quiet {
+                if offset.is_some() {
+                    // Show offset time for visual confirmation
+                    print!("{} for ", ended.format("%a %I:%M %p"));
+                }
+                // Show duration
+                print!(
+                    "{}:{:>02}  ",
+                    duration.num_hours(),
+                    duration.num_minutes() % 60,
+                );
+                praise();
+            }
+        }
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            std::process::exit(2);
+        }
+    }
+    Ok(true)
+}
+
 fn main() {
     let cli = Cli::parse();
     let tsv: String = idid::get_tsv_path(&cli.tsv)
@@ -115,40 +156,11 @@ fn main() {
             offset,
             quiet,
             text,
-        }) => match ended_at(offset.as_deref()) {
-            Ok(ended) => {
-                if text.is_empty() {
-                    eprintln!("Error: missing text");
-                    std::process::exit(1);
-                }
-                let timestamp = get_last_entry_timestamp(&tsv).expect("Bad last entry");
-                idid::write_to_tsv(&tsv, &ended, Some(&text.join(" ")));
-                let duration = current_datetime() - timestamp;
-                if duration > Duration::hours(12) {
-                    println!(
-                        "WARNING: elapsed time from last is {:>2}:{:>02}",
-                        duration.num_hours(),
-                        duration.num_minutes() % 60
-                    );
-                } else if !quiet {
-                    if offset.is_some() {
-                        // Show offset time for visual confirmation
-                        print!("{} for ", ended.format("%a %I:%M %p"));
-                    }
-                    // Show duration
-                    print!(
-                        "{}:{:>02}  ",
-                        duration.num_hours(),
-                        duration.num_minutes() % 60,
-                    );
-                    praise();
-                }
-            }
-            Err(e) => {
-                eprintln!("Error: {}", e);
-                std::process::exit(2);
-            }
-        },
+        }) => {
+            // TODO proper error handling
+            let _ = add_text(&tsv, offset, quiet, text);
+            ()
+        }
         Some(Commands::Start { offset, quiet }) => match ended_at(offset.as_deref()) {
             Ok(ended) => {
                 idid::write_to_tsv(&tsv, &ended, None);
@@ -211,19 +223,6 @@ fn main() {
                     #[cfg(debug_assertions)]
                     println!("Last not today but {}", timestamp.date_naive());
                 }
-
-                // let tuple_vec: Result<Vec<_>, _> = reverse_buffer
-                //     .take(2)
-                //     .map(|item| item.map_err(|e| e.to_string())) // Handle error conversion
-                //     .collect();
-                //
-                // // Check if the collection was successful
-                // match tuple_vec {
-                //     Ok(vec) => {
-                //         println!("{:?}", vec);
-                //     }
-                //     Err(err) => eprintln!("Error collecting tuples: {}", err),
-                // }
             }
         }
         Some(Commands::Show {
