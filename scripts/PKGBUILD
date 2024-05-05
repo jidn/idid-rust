@@ -1,0 +1,39 @@
+# Maintainer: Clinton James <clinton+rust@jidn.com>
+
+pkgname="idid"
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="A time tracker of what I did."
+arch=("x86_64")
+url="https://github.com/jidn/idid-rust"
+license=("MIT")
+makedepends=('rust' 'cargo')
+provides=("idid")
+replaces=("idid")
+conflicts=("idid")
+options=("!debug")
+source=("$url/archive/v$pkgver/$pkgname-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+prepare() {
+    cd "idid-rust-${pkgver}"
+    cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+    cd "idid-rust-${pkgver}"
+    cargo build --frozen --release
+}
+
+check() {
+    cd "idid-rust-${pkgver}"
+    cargo test -q --frozen --release
+}
+
+package() {
+    cd "idid-rust-${pkgver}"
+    install -Dm755 "target/release/${pkgname}" "${pkgdir}/usr/bin/${pkgname}"
+    install -Dm644 "README.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+    install -Dm644 "LICENSE-MIT" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-MIT"
+}
+

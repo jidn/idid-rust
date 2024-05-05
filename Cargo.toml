@@ -17,6 +17,9 @@ name = "idid"
 edition = "2021"
 crate-type = ["lib"]
 
+[profile.release]
+strip = true
+
 [dependencies]
 assert_approx_eq = "1.1.0"
 chrono = "0.4.35"
