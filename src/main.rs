@@ -123,20 +123,23 @@ fn main() {
                 }
                 let timestamp = get_last_entry_timestamp(&tsv).expect("Bad last entry");
                 idid::write_to_tsv(&tsv, &ended, Some(&text.join(" ")));
-                let elapsed = current_datetime() - timestamp;
-                println!("elapsed: {:?}", elapsed);
-                if elapsed > Duration::hours(12) {
+                let duration = current_datetime() - timestamp;
+                if duration > Duration::hours(12) {
                     println!(
                         "WARNING: elapsed time from last is {:>2}:{:>02}",
-                        elapsed.num_hours(),
-                        elapsed.num_minutes() % 60
+                        duration.num_hours(),
+                        duration.num_minutes() % 60
                     );
                 } else if !quiet {
+                    if offset.is_some() {
+                        // Show offset time for visual confirmation
+                        print!("{} for ", ended.format("%a %I:%M %p"));
+                    }
+                    // Show duration
                     print!(
-                        "{} for {}:{:>02}.  ",
-                        ended.format("%a %I:%M %p"),
-                        elapsed.num_hours(),
-                        elapsed.num_minutes() % 60,
+                        "{}:{:>02}  ",
+                        duration.num_hours(),
+                        duration.num_minutes() % 60,
                     );
                     praise();
                 }
