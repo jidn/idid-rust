@@ -2,10 +2,30 @@
 
 [![Build Status](https://github.com/jidn/idid-rust/actions/workflows/rust.yml/badge.svg)](https://github.com/jidn/idid-rust/actions/workflows/rust.yml)
 [![crates.io](https://img.shields.io/crates/v/idid)](https://crates.io/crates/idid)
-[![Unit tests](https://github.com/jidn/idid-rust/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/jidn/idid-rust/actions/workflows/unit-tests.yml)
 
 
 **Idid** is a command-line tool for tracking time spent and kept in a simple, structured format.
+
+-----
+
+**Table of Contents**
+
+- [Why another time tracker](#why)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+    - [Start your day](#start-your-day)
+    - [Add entry](#additional-activity)
+    - [Edit entries](#edit-your-history)
+    - [What did I last do?](#what-did-i-last-do)
+    - [Show your day](#show-your-day)
+        - [DATE formats](#date-formats)
+- [Usage](#usage)
+    - [Commands](#commands)
+    - [Options](#options)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Why
 
 Why another time tracker?  Simply, the others didn't meet my needs.  I wanted:
 
@@ -18,7 +38,7 @@ Why another time tracker?  Simply, the others didn't meet my needs.  I wanted:
 **Easy command line**.
 There are only five commands: start, add, edit, last, and show.
 Of thoses you could be happy only knowing the first three.
-Some of the most popular well over 15 different commands, too many.
+Some of the most popular have well over 15 different commands, far too many.
 
 **Simple data structure**.
 It is a two column tab-separated-value (TSV) file. 
@@ -36,28 +56,19 @@ I wanted to accurately track interuptions; people dropping by needing help, ment
 I also was curious about the actual amount of time I spent on various activities and discovered it didn't match what I remembered in a day or two.
 
 **Focus on what I did**.
-Most of the alternate *solutions* start with the premis, "I am going to start THIS."
+Most of the alternate solutions start with the premis, "I am going to start THIS."
 What I quickly discovered is planning rarely survives the actual encounter.
-So I needed to record what I did, and that required a quick change, I could quickly jot down what I was doing with work-in-progress "+WIP".
+So I needed to record what I did.
+It is at this point I can reflect. 
+If an interruption is happening, I can quickly jot down what I was doing with work-in-progress "+WIP".
 
-## Evolution of `idid`
+### Evolution of `idid`
 
 This started as a simple bash script, adding features as I needed.
 It worked well.  
-Eventually, it moved to Python. However, setting it up on other machines took up more time as I needed it in a user virtual environment and not the global python.
-I was learning Rust and here was an opportunity to migrate to an app with years of entries.
-
------
-
-**Table of Contents**
-
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Usage](#usage)
-    - [Commands](#commands)
-    - [Options](#options)
-- [Contributing](#contributing)
-- [License](#license)
+Eventually, it moved to Python for duration calculation. 
+However, I got frustrated with [externally managed systems](https://peps.python.org/pep-0668) when setting `idid` up on other machines.
+I was learning Rust and here was an opportunity to migrate to an app, dragging my TSV file with me.
 
 ## Installation
 
@@ -97,10 +108,10 @@ As you finish a task, milestone, or item of note, record what you did.
 
 ```
 did add cleared inbox
-Mon 08:20 AM for 00:25  Well done!
+00:25  Well done!
 ```
 
-Nice. I see the time recorded, duration in HH:MM format, and some positive feedback.
+Nice. I see the duration in HH:MM format and some positive feedback.
 
 Later on, you forgot to record fixing an issue 10 minutes ago at 9:50.
 To alter the time, use the `-t` option with either the number of minutes or the time.
@@ -114,7 +125,7 @@ or
 
 ```sh
 idid add -t 9:50 fixed issue #42
-Mon 09:50  01:30  Well done!
+Mon 09:50 for 01:30  Well done!
 ```
 
 Remember you are typing in your shell so some characters will cause problems.
@@ -146,11 +157,11 @@ Now you can make changes.
 
 Things to remember.
 
-+ The TSV must be in chronological order. The duration depends on it.
++ The TSV must be in chronological order. The start and duration depends on it.
 + Blank lines and comments are not allowed.
-+ Do not alter the day's start text. 
++ Do not alter the start text "`*~*~*--------------------`".
 
-### When and what did I recently add?
+### What did When did I last do?
 
 Opening the TSV file is a bit of an overkill to answer the question.
 You can use `last` without any arguments to see the duration from the last time you added anything.
@@ -180,17 +191,23 @@ It would be nice to show a list entries for today.
 
 ```shell
 $ idid show today
-2024-04-01T15:02:24-05:00	emailed status update to PH
+2024-04-01T15:02:24-05:00	00:10  emailed status update to PH
 ...  (redacted)
-2024-04-01T07:58:25-05:00	*~*~*--------------------
+2024-04-01T08:02:25-05:00	00:04  daily planning
 ```
 
-This is not a neat report.  It is not a report at all. It is simple a dump of all of today's entries.
+This is not a neat report.  It is not a report at all.
+It is simple a dump of all of today's entries with the duration in HH:MM format.
 And yes, I know the date looks a bit funny.  It is a format specified in (RFC 3339)[http://tools.ietf.org/html/rfc3339).
 While "readable" may be debated, it has several benefits as it remains in chronological order when sorted, is strictly defined, and has common library support.
-You can give any number of **`DATE`**s or use the `--range` with two dates to get all entries with the range.
+You can give any number of **`[DATE](#date-format)`**s or use the `--range` with two dates to get all entries within the range.
 
 This consistant output format allows you to create additional tools to transforms the information for reporting, invoicing, or whatever your mind dreams up.  See [group-by-day.sh](scripts/group-by-day.sh) as an example.
+
+There are a couple of options to help with additional processing.
+You can get the duration in seconds and json output rather than TSV.
+I hope these convience will help in creating new external processing tools.
+See `idid show --help` for details.
 
 #### DATE formats
 
@@ -250,5 +267,5 @@ Contributions to idid-rust are welcome! If you'd like to contribute, please foll
 
 ## License
 
-`idid` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) [license](LICENSE-MIT).
+`idid` is distributed under the terms of the [MIT license](LICENSE-MIT).
 
