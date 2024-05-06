@@ -47,8 +47,6 @@ It worked well.
 Eventually, it moved to Python. However, setting it up on other machines took up more time as I needed it in a user virtual environment and not the global python.
 I was learning Rust and here was an opportunity to migrate to an app with years of entries.
 
-
-
 -----
 
 **Table of Contents**
@@ -152,15 +150,43 @@ Things to remember.
 + Blank lines and comments are not allowed.
 + Do not alter the day's start text. 
 
+### When and what did I recently add?
+
+Opening the TSV file is a bit of an overkill to answer the question.
+You can use `last` without any arguments to see the duration from the last time you added anything.
+If you give last a number then it will show that number of entries in the TSV.
+
+```sh
+idid last
+00:25
+```
+
+It has been 25 minutes from my last entry.  Time is flying past.
+
+```sh
+idid last 3
+2024-04-01T10:40:24-05:00	Issue #680 solution tested
+2024-04-01T08:57:43-05:00	Help CJ with @ACME problem
+2024-04-01T08:43:07-05:00	Issue #680 fix +WIP
+```
+
+Note the most recent is first, and you can see I recorded helping CJ.
+Now I have choices. Do I make edits or can I just add a new entry?
+
+
 ### Show your day
 
-It would be nice to show a list of your accomplishments for today.
+It would be nice to show a list entries for today.
 
 ```shell
 $ idid show today
+2024-04-01T15:02:24-05:00	emailed status update to PH
+...  (redacted)
+2024-04-01T07:58:25-05:00	*~*~*--------------------
 ```
 
-Yes, I know the date looks a bit funny.  It is a format specified in (RFC 3339)[http://tools.ietf.org/html/rfc3339).
+This is not a neat report.  It is not a report at all. It is simple a dump of all of today's entries.
+And yes, I know the date looks a bit funny.  It is a format specified in (RFC 3339)[http://tools.ietf.org/html/rfc3339).
 While "readable" may be debated, it has several benefits as it remains in chronological order when sorted, is strictly defined, and has common library support.
 You can give any number of **`DATE`**s or use the `--range` with two dates to get all entries with the range.
 
@@ -198,10 +224,10 @@ The idid tool provides several commands and options for managing your accomplish
 
 ### Commands
 
++ **start**: Start recording time for the day.
 + **add**: Add a new accomplishment.
 + **edit**: Edit the TSV (Tab-Separated Values) file using your default editor.
 + **last**: See the duration from today's last entry or display a specific number of lines from the TSV file.
-+ **start**: Start recording time for the day.
 + **show**: Show selected accomplishments.
 
 ### Options
