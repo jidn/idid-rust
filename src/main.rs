@@ -256,8 +256,8 @@ fn command_last(tsv: &str, lines: &Option<u32>) {
                 elapsed.num_minutes() % 60
             );
         } else {
-            #[cfg(debug_assertions)]
-            println!("Last not today but {}", timestamp.date_naive());
+            eprintln!("Nothing today but {}", timestamp.date_naive());
+            std::process::exit(3);
         }
     }
 }
