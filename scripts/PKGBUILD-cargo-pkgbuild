@@ -1,0 +1,22 @@
+# Maintainer: Clinton James <clinton+rust@jidn.com>
+pkgname=idid
+pkgver=0.1.0
+pkgrel=1
+makedepends=('rust' 'cargo')
+arch=('x86_64' 'armv6h' 'armv7h')
+pkgdesc="Record, edit, and view what you did."
+url="https://github.com/jidn/idid-rust"
+license=('MIT')
+options=("!debug")
+
+build() {
+    return 0
+}
+
+package() {
+    cd $srcdir
+    echo "srcdir=$srcdir"
+    echo "pdw=$(pwd)"
+    echo "cargo install --root="$pkgdir" --git=https://github.com/jidn/idid-rust"
+    cargo install --root="$pkgdir/usr" --git=https://github.com/jidn/idid-rust
+}
