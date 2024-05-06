@@ -251,7 +251,7 @@ fn command_last(tsv: &str, lines: &Option<u32>) {
         if now.date_naive() == timestamp.date_naive() {
             let elapsed = now - timestamp;
             println!(
-                "Elapsed: {:>2}:{:>02}",
+                "{:>02}:{:>02}",
                 elapsed.num_hours(),
                 elapsed.num_minutes() % 60
             );
