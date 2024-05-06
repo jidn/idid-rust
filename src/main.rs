@@ -12,7 +12,18 @@ use util_time::current_datetime;
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Add accomplishment.
+    /// Start tracking time.
+    Start {
+        /// WHEN minutes ago or time, ie "8am", "13:15", "4:55pm"
+        #[arg(short = 't', value_name = "WHEN")]
+        offset: Option<String>,
+
+        /// Quiet response
+        #[arg(short, long)]
+        quiet: bool,
+    },
+
+    /// Add something you did.
     #[command(arg_required_else_help = true)]
     Add {
         /// WHEN minutes ago or time, ie "8am", "13:15", "4:55pm"
@@ -37,24 +48,13 @@ enum Commands {
         lines: Option<u32>,
     },
 
-    /// Start recording time.
-    Start {
-        /// WHEN minutes ago or time, ie "8am", "13:15", "4:55pm"
-        #[arg(short = 't', value_name = "WHEN")]
-        offset: Option<String>,
-
-        /// Quiet response
-        #[arg(short, long)]
-        quiet: bool,
-    },
-
-    /// Show accomplishments.
+    /// Show DATEs or DATE range entries.
     Show {
         #[clap(flatten)]
-        args: DateArgs,
+        args: ArgsShow,
 
         /// Show duration in seconds
-        #[arg(short, long)]
+        #[arg(long)]
         seconds: bool,
 
         /// Json output
@@ -64,7 +64,22 @@ enum Commands {
 }
 
 #[derive(Args, Debug)]
-struct DateArgs {
+struct ArgsAdd {
+    /// WHEN minutes ago or time, ie "8am", "13:15", "4:55pm"
+    #[arg(short = 't', value_name = "WHEN")]
+    offset: Option<String>,
+
+    /// Quiet response
+    #[arg(short, long)]
+    quiet: bool,
+
+    /// Text to record
+    #[arg(required = true)]
+    text: Vec<String>,
+}
+
+#[derive(Args, Debug)]
+struct ArgsShow {
     /// DATE can be any of:
     ///
     ///  -  Days before today. 0 is today and 1 is yesterday; max 999.
@@ -94,27 +109,62 @@ struct Cli {
     tsv: Option<PathBuf>,
 }
 
-/// Process dates and ranges using str_to_date
-fn date_filter_from_date_args(args: &DateArgs) -> idid::DateFilter {
-    let parsed_dates = date_parse::strings_to_dates(&args.dates).expect("Unable to parse dates.");
-    let parsed_range = date_parse::strings_to_dates(&args.range).expect("Unable to parse range.");
-    idid::DateFilter::new(&parsed_range, &parsed_dates)
+fn main() {
+    let cli = Cli::parse();
+    let tsv: String = idid::get_tsv_path(&cli.tsv)
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
+
+    match &cli.command {
+        Some(Commands::Add {
+            offset,
+            quiet,
+            text,
+        }) => {
+            command_add(&tsv, offset.as_deref(), quiet, text);
+        }
+        Some(Commands::Start { offset, quiet }) => {
+            command_start(&tsv, offset, quiet);
+        }
+        Some(Commands::Edit {}) => {
+            command_edit(&tsv);
+        }
+        Some(Commands::Last { lines }) => {
+            command_last(&tsv, lines);
+        }
+        Some(Commands::Show {
+            args,
+            seconds,
+            json,
+        }) => {
+            let filter = date_filter_from_date_args(args);
+            if filter.is_empty() {
+                eprintln!("Error: at least one of --dates or --range is required");
+                std::process::exit(1);
+            }
+
+            for entry in idid::pick(tsv, &filter) {
+                println!("{}", entry.serialize(seconds, *json));
+            }
+        }
+        None => {
+            #[cfg(debug_assertions)]
+            println!("None: current tsv={}", tsv);
+        }
+    }
 }
 
-fn add_text(
-    tsv: &str,
-    offset: &Option<String>,
-    quiet: &bool,
-    text: &Vec<String>,
-) -> Result<bool, String> {
-    match ended_at(offset.as_deref()) {
+/// Add a line to the end of the TSV
+fn command_add(tsv: &str, offset: Option<&str>, quiet: &bool, text: &[String]) {
+    match offset_from_current_or_current(offset) {
         Ok(ended) => {
             if text.is_empty() {
                 eprintln!("Error: missing text");
                 std::process::exit(1);
             }
-            let timestamp = get_last_entry_timestamp(&tsv).expect("Bad last entry");
-            idid::write_to_tsv(&tsv, &ended, Some(&text.join(" ")));
+            let timestamp = get_last_entry_timestamp(tsv).expect("Bad last entry");
+            idid::write_to_tsv(tsv, &ended, Some(&text.join(" ")));
             let duration = current_datetime() - timestamp;
             if duration > Duration::hours(12) {
                 println!(
@@ -141,117 +191,102 @@ fn add_text(
             std::process::exit(2);
         }
     }
-    Ok(true)
 }
 
-fn main() {
-    let cli = Cli::parse();
-    let tsv: String = idid::get_tsv_path(&cli.tsv)
-        .unwrap()
-        .to_string_lossy()
-        .to_string();
-
-    match &cli.command {
-        Some(Commands::Add {
-            offset,
-            quiet,
-            text,
-        }) => {
-            // TODO proper error handling
-            let _ = add_text(&tsv, offset, quiet, text);
-            ()
+fn command_edit(tsv: &str) {
+    // Get the value of the EDITOR environment variable
+    let editor = match env::var("EDITOR") {
+        Ok(val) => val,
+        Err(_) => {
+            eprintln!("EDITOR environment variable is not set");
+            std::process::exit(1);
         }
-        Some(Commands::Start { offset, quiet }) => match ended_at(offset.as_deref()) {
-            Ok(ended) => {
-                idid::write_to_tsv(&tsv, &ended, None);
-                if !quiet {
-                    print!("Starting at {}.  ", ended.time().format("%I:%M %p"));
-                    praise();
-                }
-            }
-            Err(e) => {
-                eprintln!("Error: {}", e);
-                std::process::exit(2);
-            }
-        },
-        Some(Commands::Edit {}) => {
-            // Get the value of the EDITOR environment variable
-            let editor = match env::var("EDITOR") {
-                Ok(val) => val,
-                Err(_) => {
-                    eprintln!("EDITOR environment variable is not set");
-                    std::process::exit(1);
-                }
-            };
+    };
 
-            let mut command = std::process::Command::new(&editor);
-            command.arg(tsv);
+    let mut command = std::process::Command::new(&editor);
+    command.arg(tsv);
 
-            // Check if the editor is a vi variant
-            if editor.ends_with("vi") || editor.ends_with("vim") {
-                // Open at the end of the file
-                command.arg("+$");
-            }
+    // Check if the editor is a vi variant
+    if editor.ends_with("vi") || editor.ends_with("vim") {
+        // Open at the end of the file
+        command.arg("+$");
+    }
 
-            let status = command.status().expect("Failed to start editor process");
-            if !status.success() {
-                eprintln!("Editor process failed with error code: {:?}", status.code());
+    let status = command.status().expect("Failed to start editor process");
+    if !status.success() {
+        eprintln!("Editor process failed with error code: {:?}", status.code());
+    }
+}
+
+fn command_start(tsv: &str, offset: &Option<String>, quiet: &bool) {
+    match offset_from_current_or_current(offset.as_deref()) {
+        Ok(ended) => {
+            idid::write_to_tsv(tsv, &ended, None);
+            if !quiet {
+                print!("Starting at {}.  ", ended.time().format("%I:%M %p"));
+                praise();
             }
         }
-        Some(Commands::Last { lines }) => {
-            if lines.is_some() {
-                let file = fs::File::open(&tsv).expect("Failed to open TSV file");
-                let mut reverse_buffer = rev_lines::RevLines::new(file);
-                for _ in 0..lines.unwrap() {
-                    if let Some(Ok(line)) = reverse_buffer.next() {
-                        println!("{}", line);
-                    } else {
-                        break;
-                    }
-                }
-            } else {
-                let timestamp = get_last_entry_timestamp(&tsv).expect("Invalid TSV");
-                let now = current_datetime();
-                if now.date_naive() == timestamp.date_naive() {
-                    let elapsed = now - timestamp;
-                    println!(
-                        "Elapsed: {:>2}:{:>02}",
-                        elapsed.num_hours(),
-                        elapsed.num_minutes() % 60
-                    );
-                } else {
-                    #[cfg(debug_assertions)]
-                    println!("Last not today but {}", timestamp.date_naive());
-                }
-            }
-        }
-        Some(Commands::Show {
-            args,
-            seconds,
-            json,
-        }) => {
-            let filter = date_filter_from_date_args(args);
-            if filter.is_empty() {
-                eprintln!("Error: at least one of --dates or --range is required");
-                std::process::exit(1);
-            }
-
-            for entry in idid::pick(tsv, &filter) {
-                println!("{}", entry.serialize(seconds, *json));
-            }
-        }
-        None => {
-            #[cfg(debug_assertions)]
-            println!("None: current tsv={}", tsv);
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            std::process::exit(2);
         }
     }
 }
 
-fn ended_at(offset: Option<&str>) -> Result<DateTime<FixedOffset>, String> {
+fn command_last(tsv: &str, lines: &Option<u32>) {
+    if lines.is_some() {
+        let file = fs::File::open(tsv).expect("Failed to open TSV file");
+        let mut reverse_buffer = rev_lines::RevLines::new(file);
+        for _ in 0..lines.unwrap() {
+            if let Some(Ok(line)) = reverse_buffer.next() {
+                println!("{}", line);
+            } else {
+                break;
+            }
+        }
+    } else {
+        let timestamp = get_last_entry_timestamp(tsv).expect("Invalid TSV");
+        let now = current_datetime();
+        if now.date_naive() == timestamp.date_naive() {
+            let elapsed = now - timestamp;
+            println!(
+                "Elapsed: {:>2}:{:>02}",
+                elapsed.num_hours(),
+                elapsed.num_minutes() % 60
+            );
+        } else {
+            #[cfg(debug_assertions)]
+            println!("Last not today but {}", timestamp.date_naive());
+        }
+    }
+}
+
+/// Get either an offset from current time or the current time.
+fn offset_from_current_or_current(offset: Option<&str>) -> Result<DateTime<FixedOffset>, String> {
     if offset.is_some() {
         return time_parse::time_adjustment(offset);
     }
     Ok(current_datetime())
+}
+
+fn get_last_entry_timestamp(tsv: &str) -> Result<DateTime<FixedOffset>, String> {
+    let file = fs::File::open(tsv).expect("Failed to open TSV file");
+    let mut reverse_buffer = rev_lines::RevLines::new(file);
+    match reverse_buffer.next().expect("empty TSV") {
+        Ok(tsv_line) => {
+            let (timestamp, _) = idid::Entry::from_tsv(&tsv_line)?;
+            Ok(timestamp)
+        }
+        Err(e) => panic!("{}", e),
+    }
+}
+
+/// Process dates and ranges using str_to_date
+fn date_filter_from_date_args(args: &ArgsShow) -> idid::DateFilter {
+    let parsed_dates = date_parse::strings_to_dates(&args.dates).expect("Unable to parse dates.");
+    let parsed_range = date_parse::strings_to_dates(&args.range).expect("Unable to parse range.");
+    idid::DateFilter::new(&parsed_range, &parsed_dates)
 }
 
 fn praise() {
@@ -287,16 +322,4 @@ fn praise() {
         .choose(&mut rand::thread_rng())
         .unwrap_or(&".");
     println!("{}{}", say, punct);
-}
-
-fn get_last_entry_timestamp(tsv: &str) -> Result<DateTime<FixedOffset>, String> {
-    let file = fs::File::open(tsv).expect("Failed to open TSV file");
-    let mut reverse_buffer = rev_lines::RevLines::new(file);
-    match reverse_buffer.next().expect("empty TSV") {
-        Ok(tsv_line) => {
-            let (timestamp, _) = idid::Entry::from_tsv(&tsv_line)?;
-            Ok(timestamp)
-        }
-        Err(e) => panic!("{}", e),
-    }
 }
