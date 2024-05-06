@@ -2,12 +2,12 @@
 name = "idid"
 version = "0.1.0"
 edition = "2021"
-description = "Record, edit, and view what you did."
+description = "Track, edit, and view what you did."
 authors = ["Clinton James <clinton+rust@jidn.com>"]
 license = "MIT"
 homepage = "https://github.com/jidn/idid-rust"
 repository = "https://github.com/jidn/idid-rust"
-keywords = ["cli", "time", "tracker"]
+keywords = ["cli", "time", "tracking"]
 categories = ["command-line-utilities"]
 readme="README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
