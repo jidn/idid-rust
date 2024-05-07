@@ -198,7 +198,7 @@ $ idid show today
 
 This is not a neat report.  It is not a report at all.
 It is simple a dump of all of today's entries with the duration in HH:MM format.
-And yes, I know the date looks a bit funny.  It is a format specified in (RFC 3339)[http://tools.ietf.org/html/rfc3339).
+And yes, I know the date looks a bit funny.  It is a format specified in [RFC 3339](http://tools.ietf.org/html/rfc3339).
 While "readable" may be debated, it has several benefits as it remains in chronological order when sorted, is strictly defined, and has common library support.
 You can give any number of **`[DATE](#date-format)`**s or use the `--range` with two dates to get all entries within the range.
 
@@ -217,7 +217,7 @@ While `DATE` as a number is difficult to use, any number less than a thousand is
 
 A much easier format is the two-digit month and day as **`MM-DD`** or **`MMDD`**; the dash is optional.
 As long as the date is within the last 264ish days, you don't need to specify the year.
-When you need the year, use **`YY-MM-DD`** or **`YYYY-MM-DD`** will give you the exact date.
+When you need the year, **`YY-MM-DD`** or **`YYYY-MM-DD`** will give you the exact date.
 
 You can also use the abbreviated day-of-the-week (DOW) i.e. 'mon', 'tue', ..., 'sun'. 
 Just remember that if today is Monday, then 'mon' is last Monday not today.
