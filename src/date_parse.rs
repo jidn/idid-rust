@@ -265,7 +265,7 @@ mod tests {
     #[case("0402", 2023, 4, 2)] // last April 2
     #[case("04-02", 2023, 4, 2)] // same with dashes
     #[case("240401", 2024, 4, 1)] // 2024-04-01
-    #[case("2024-04-01", 2024, 4, 1)] // 2024-04-01
+    #[case("20240401", 2024, 4, 1)] // 2024-04-01
     fn test_date_parse_numeric(
         #[case] input: &str,
         #[case] year: i32,

@@ -81,7 +81,8 @@ impl Entry {
     pub fn from_tsv(line: &str) -> Result<(chrono::DateTime<FixedOffset>, String), String> {
         let mut parts = line.splitn(2, '\t');
         let when_str = parts.next().expect("TSV line.");
-        let when = DateTime::parse_from_rfc3339(when_str).expect("rfc3339");
+        let when = DateTime::parse_from_rfc3339(when_str)
+            .map_err(|e| format!("DateTime parser error '{when_str}': {e}"))?;
         let text = parts.next().unwrap_or_default().to_string();
         Ok((when, text))
     }
@@ -95,6 +96,8 @@ where
 {
     // Search the file in reverse order
     lines: RevLines<R>,
+    // The current number of lines from the end
+    line_from_end: u32,
 
     // Usually DateFilter.contains(&Entry)->bool
     filter: F,
@@ -169,10 +172,11 @@ where
     /// }
     pub fn new(source: R, filter: F, oldest: Option<chrono::NaiveDate>) -> Self {
         Self {
-            lines: RevLines::new(source),
             filter,
             oldest,
             last_line: None,
+            lines: RevLines::new(source),
+            line_from_end: 0,
         }
     }
 }
@@ -183,16 +187,18 @@ where
     R: io::BufRead + io::Seek,
 {
     type Item = Entry;
-
     /// Get the next matching entry.
     fn next(&mut self) -> Option<Self::Item> {
         // while let Some(line) = self.lines.next() {
         for line in self.lines.by_ref() {
+            self.line_from_end += 1;
             let line = line.unwrap().trim().to_string();
-            // println!("line={:?}", line);
+            //println!("#{} {}", self.line_from_end, line);
 
             // Each TSV line is timestamp and description of something done
-            let (when, text) = Entry::from_tsv(&line).unwrap();
+            let (when, text) = Entry::from_tsv(&line)
+                .map_err(|e| format!("TSV #{} from end: {}", self.line_from_end, e))
+                .unwrap_or_else(|err_msg| panic!("{}", err_msg));
 
             // Older than oldest? Nothing more to find.
             if self.oldest.is_some() && when.date_naive() < self.oldest? {
@@ -309,10 +315,11 @@ mod tests {
     #[test]
     fn test_pick_iterator_empty() {
         let mut iterator = EntryIterator {
-            lines: RevLines::new(io::Cursor::new(Vec::new())),
             filter: |_: &Entry| true,
             oldest: None,
             last_line: None,
+            lines: RevLines::new(io::Cursor::new(Vec::new())),
+            line_from_end: 0,
         };
         let next_value = iterator.next();
         // println!("next={:?}", next_value);
