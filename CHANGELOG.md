@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.1.2]
+
+### Added
+
 - Documentation for using rust idid library.
+- Added TSV line number of parse error.
+- Added post-commit hook script example.
 
 ## [0.1.1] 2024-05-04
 

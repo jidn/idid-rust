@@ -1,0 +1,14 @@
+#!/bin/sh 
+
+# Is idid an available command?
+which idid > /dev/null
+
+if [[ $? -eq 0 ]]; then
+  # What was the last message for today
+  idid last > /dev/null 2>&1
+
+  if [[ $? -eq 0 ]]; then
+    msg=$(git log --oneline --no-decorate --no-color | head -n 1)
+    idid add --quiet "Commit: $msg"
+  fi
+fi
