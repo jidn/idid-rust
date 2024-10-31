@@ -129,15 +129,37 @@ Mon 09:50 for 01:30  Well done!
 ```
 
 Remember you are typing in your shell so some characters will cause problems.
-The most common issues are single quotes, semi-colons, and ampersands.
+The most common issues are single quotes, semi-colons, redirection, and ampersands.
 You will have to quote them or use natural language. 
+
+### Multiple, distinct activity/projects
+
+Freelancers need to track multiple projects/client as they switch tasks throughout the day.
+I use a [TodoText.org] project tag at the beginning of `add` text, a word starting with a plus sign.
+You can use what ever works best for you.
+
+```sh
+idid add -q "+acme emailed JCJ on next steps"
+``` 
+
+Use command line tools filter results.
+
+```sh
+idid show today | grep '+acme'
+```
 
 ### Noncontiguous: lunch and extended breaks
 
 Lunch or extended breaks may not be something you want to track.
-For some reason, those to whom I report don't want that time included.
+For some reason, those to whom I report do not want that time included.
 Add an entry before leaving about what you have done up to that point with `idid add 'project poodles work-in-progress (WIP)'` or something similar.
 Now use `idid start` after returning.
+
+However, if you want to document your time, place it in a personal project or what ever makes sense to you. 
+
+```sh
+idid add +personal hotdog lunch at Costco
+```
 
 ### Edit your history
 
@@ -161,7 +183,7 @@ Things to remember.
 + Blank lines and comments are not allowed.
 + Do not alter the start text "`*~*~*--------------------`".
 
-### What did When did I last do?
+### What did I last do?
 
 Opening the TSV file is a bit of an overkill to answer the question.
 You can use `last` without any arguments to see the duration from the last time you added anything.
@@ -183,7 +205,6 @@ idid last 3
 
 Note the most recent is first, and you can see I recorded helping CJ.
 Now I have choices. Do I make edits or can I just add a new entry?
-
 
 ### Show your day
 
