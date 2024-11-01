@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [0.1.3]
+
+### Added
+
+- `idid show` use today if no DATE or range is given.
+
 ## [0.1.2]
 
 ### Added
