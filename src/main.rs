@@ -23,7 +23,7 @@ enum Commands {
         quiet: bool,
     },
 
-    /// Add something you did.
+    /// Add something note worthy.
     #[command(arg_required_else_help = true)]
     Add {
         /// WHEN minutes ago or time, ie "8am", "13:15", "4:55pm"
@@ -82,8 +82,8 @@ struct ArgsAdd {
 struct ArgsShow {
     /// DATE can be any of:
     ///
-    ///  -  Days before today. 0 is today and 1 is yesterday; max 999.
     ///  -  Literal "today" or "yesterday".
+    ///  -  Days before today. 0 is today and 1 is yesterday; max 999.
     ///  -  YYYYMMDD (dashes optinal).
     ///  -  YYMMDD (leading 0, dashes optional) starting in the year 2000.
     ///  -  Last MMDD (leading 0, dashes optinal); within 364ish days.
@@ -284,8 +284,15 @@ fn get_last_entry_timestamp(tsv: &str) -> Result<DateTime<FixedOffset>, String> 
 
 /// Process dates and ranges using str_to_date
 fn date_filter_from_date_args(args: &ArgsShow) -> idid::DateFilter {
-    let parsed_dates = date_parse::strings_to_dates(&args.dates).expect("Unable to parse dates.");
+    let mut parsed_dates =
+        date_parse::strings_to_dates(&args.dates).expect("Unable to parse dates.");
     let parsed_range = date_parse::strings_to_dates(&args.range).expect("Unable to parse range.");
+
+    if parsed_dates.len() == 0 && parsed_range.len() == 0 {
+        #[cfg(debug_assertions)]
+        println!("ArgsShow adding default of today");
+        parsed_dates.push(date_parse::date_from_str("today").unwrap());
+    }
     idid::DateFilter::new(&parsed_range, &parsed_dates)
 }
 
