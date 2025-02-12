@@ -38,12 +38,12 @@ Why another time tracker? Simply, the others didn't meet my needs. I wanted:
 **Easy command line**.
 There are only five commands: start, add, edit, last, and show.
 Of thoses you could be happy only knowing the first three.
-Some of the most popular have well over 15 different commands, far too many.
+Some of the other popular time trackers have well over 15 different commands, far too many.
 
 **Simple data structure**.
 It is a two column tab-separated-value (TSV) file.
-The timestamp and my text description of what I did.
-No start time or duration is needed as it can be infered from the previous row.
+The timestamp and a text description of what I did.
+No start time or duration is needed as it can be calculated from the previous entry.
 
 **Simple to edit and modify**.
 This tool does not attempt to make changes.
@@ -56,17 +56,17 @@ I wanted to accurately track interuptions; people dropping by needing help, ment
 I also was curious about the actual amount of time I spent on various activities and discovered it didn't match what I remembered in a day or two.
 
 **Focus on what I did**.
-Most of the alternate solutions start with the premis, "I am going to start THIS."
+Most of the alternate solutions start with the premis, "I plan to start THIS."
 What I quickly discovered is planning rarely survives the actual encounter.
 So I needed to record what I did.
 It is at this point I can reflect.
-If an interruption is happening, I can quickly jot down what I was doing with work-in-progress "+WIP".
+If an interruption is happening, I can quickly jot down what I was doing with work-in-progress "@WIP".
 
 ### Evolution of `idid`
 
 This started as a simple bash script, adding features as I needed.
 It worked well.  
-Eventually, it moved to Python for duration calculation.
+Eventually, it moved to Python for duration calculation; see `idid show --help`.
 However, I got frustrated with [externally managed systems](https://peps.python.org/pep-0668) when setting `idid` up on other machines.
 I was learning Rust and here was an opportunity to migrate to an app, dragging my TSV file with me.
 
@@ -79,7 +79,7 @@ Read the [INSTALL.md](INSTALL.md) file for details.
 
 `idid` revolves around the idea of recording what you just did, hence the name `idid`.
 As you record your activity, the duration is calculated from your previous entry.
-Thus, your first activity for the day is starting.
+Thus, your first entry for the day is starting.
 
 ### Start your day
 
@@ -107,8 +107,15 @@ Starting at 07:55 AM.  Sensational.
 
 As you finish a task, milestone, or item of note, record what you did.
 
+```sh
+idid add +project spoke with Tim
+00:10  Super.
 ```
-did add cleared inbox
+
+and 25 minutes later
+
+```sh
+idid add cleared inbox
 00:25  Well done!
 ```
 
@@ -129,6 +136,8 @@ idid add -t 9:50 fixed issue #42
 Mon 09:50 for 01:30  Well done!
 ```
 
+Notice there is more information about when the task started.
+
 Remember you are typing in your shell so some characters will cause problems.
 The most common issues are single quotes, semi-colons, redirection, and ampersands.
 You will have to quote them or use natural language.
@@ -136,8 +145,9 @@ You will have to quote them or use natural language.
 ### Multiple, distinct activity/projects
 
 Freelancers need to track multiple projects/client as they switch tasks throughout the day.
-I use a [TodoTxt.org] project tag at the beginning of `add` text, a word starting with a plus sign.
-You can use what ever works best for you.
+I use a [TodoTxt.org](https://github.com/todotxt/todo.txt?tab=readme-ov-file#context)
+context tag at the beginning of `add` text, a word starting with a plus sign.
+Use whatever works best for you.
 
 ```sh
 idid add -q "+acme emailed CJ on next steps"
@@ -155,8 +165,7 @@ Lunch or extended breaks may not be something you want to track.
 For some reason, those to whom I report do not want that time included.
 Add an entry before leaving about what you have done up to that point with `idid add 'project poodles work-in-progress (WIP)'` or something similar.
 Now use `idid start` after returning.
-
-However, if you want to document your time, place it in a personal project or what ever makes sense to you.
+However, if you want to document your time, use a personal context or whatever makes sense to you and your workflow.
 
 ```sh
 idid add +personal hotdog lunch at Costco
@@ -235,29 +244,30 @@ See `idid show --help` for details.
 #### DATE formats
 
 The word `today` is a special `DATE`, as is `yesterday`.
-You can also use the number of days in the past, to `idid show 0` is the same as `idid show today`.
-While `DATE` as a number is difficult to use, any number less than a thousand is valid.
+You can also use the number of days in the past and `idid show 0` is the same as `idid show today`.
+While `DATE` as a number is difficult to use for anything over a handful of digits, any number less than a thousand is valid.
 
 A much easier format is the two-digit month and day as **`MM-DD`** or **`MMDD`**; the dash is optional.
 As long as the date is within the last 264ish days, you don't need to specify the year.
-When you need the year, **`YY-MM-DD`** or **`YYYY-MM-DD`** will give you the exact date.
 
-You can also use the abbreviated day-of-the-week (DOW) i.e. 'mon', 'tue', ..., 'sun'.
+To specify the year, use **`YYYY-MM-DD`** or **`YY-MM-DD`** assuming date is after the year 2000.
+Again, dashes are optional in calendar dates.
+
 Just remember that if today is Monday, then 'mon' is last Monday not today.
 If you want to add additional weeks, append a number to the DOW.
 The Monday one week before the last Monday is `mon1`.
 
 If today were Monday, April 1, 2024, then Sunday, March 31, 2024, could be represented by any of the following:
 
-- yesterday
-- 1
-- 03-31 or 0331
-- 2024-03-31
 - sun
+
+* yesterday
+* 1
+* 03-31 or 0331
+* 2024-03-31, 240331, or 20240331
 
 I know. It seems a bit excessive. But I use them, so use the ones that work best for your needs.
 If you need a quick reminder, execute `idid show --help`.
-The long form `--help` shows the many date formats.
 
 ## Usage
 
