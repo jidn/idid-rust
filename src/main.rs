@@ -53,6 +53,10 @@ enum Commands {
         #[clap(flatten)]
         args: ArgsShow,
 
+        /// Show range total
+        #[arg(short = 't', long = "total", help = "Total duration.")]
+        total: bool,
+
         /// Show duration in seconds
         #[arg(long)]
         seconds: bool,
@@ -135,6 +139,7 @@ fn main() {
         }
         Some(Commands::Show {
             args,
+            total,
             seconds,
             json,
         }) => {
@@ -144,8 +149,16 @@ fn main() {
                 std::process::exit(1);
             }
 
+            let mut total_duration = Duration::zero();
             for entry in idid::pick(tsv, &filter) {
+                total_duration += entry.duration();
                 println!("{}", entry.serialize(seconds, *json));
+            }
+            if *total && !*json && !*seconds && total_duration > Duration::zero() {
+                println!(
+                    "                Total    \t{}",
+                    idid::hh_mm(&total_duration)
+                );
             }
         }
         None => {

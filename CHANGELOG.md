@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## 0.1.4
+
+### Added
+
+- Added `-t, --total` to `show` command.
+
 ## [0.1.3]
 
 ### Added
@@ -25,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.1] 2024-05-04
 
-### Added 
+### Added
 
 - README section for purpose, history, and `last` subcommand.
 - This CHANGELOG.md file.
@@ -40,4 +46,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- The 'sum' subcommand.  Use external tool. See script example.
+- The 'sum' subcommand. Use external tool. See script example.
