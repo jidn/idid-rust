@@ -127,18 +127,15 @@ mod tests {
         assert!(filter.dates.is_empty());
         assert_eq!(filter.oldest_date, None);
         assert_eq!(filter.newest_date, None);
-        assert_eq!(
-            filter.contains(&NaiveDate::from_ymd_opt(2024, 4, 1).unwrap()),
-            false
-        );
+        assert!(!filter.contains(&NaiveDate::from_ymd_opt(2024, 4, 1).unwrap()));
     }
 
     #[test]
     fn test_filter_only_dates() {
         let individual_dates = vec![ymd(2024, 3, 1), ymd(2024, 2, 1), ymd(2024, 4, 1)];
         let filter = DateFilter::new(&[], &individual_dates);
-        assert_eq!(filter.contains(&ymd(2024, 3, 1)), true);
-        assert_eq!(filter.contains(&ymd(2024, 1, 1)), false);
+        assert!(filter.contains(&ymd(2024, 3, 1)));
+        assert!(!filter.contains(&ymd(2024, 1, 1)));
         assert_eq!(filter.oldest_date, filter.dates.first().cloned());
         assert_eq!(filter.newest_date, filter.dates.last().cloned());
     }
@@ -160,10 +157,10 @@ mod tests {
         let expected_newest = filter.date_ranges.last().map(|(_, end)| *end);
         assert_eq!(filter.newest_date, expected_newest);
 
-        assert_eq!(filter.contains(&ymd(2024, 1, 1)), true);
-        assert_eq!(filter.contains(&ymd(2024, 1, 10)), true);
-        assert_eq!(filter.contains(&ymd(2024, 1, 5)), true);
-        assert_eq!(filter.contains(&ymd(2024, 2, 1)), false);
+        assert!(filter.contains(&ymd(2024, 1, 1)));
+        assert!(filter.contains(&ymd(2024, 1, 10)));
+        assert!(filter.contains(&ymd(2024, 1, 5)));
+        assert!(!filter.contains(&ymd(2024, 2, 1)));
     }
 
     #[test]
@@ -180,9 +177,9 @@ mod tests {
         assert_eq!(filter.oldest_date, Some(ymd(2024, 1, 1)));
         assert_eq!(filter.newest_date, Some(ymd(2024, 4, 1)));
 
-        assert_eq!(filter.contains(&ymd(2024, 1, 5)), true);
-        assert_eq!(filter.contains(&ymd(2024, 1, 1)), true);
-        assert_eq!(filter.contains(&ymd(2024, 1, 10)), true);
-        assert_eq!(filter.contains(&ymd(2024, 6, 1)), false);
+        assert!(filter.contains(&ymd(2024, 1, 5)));
+        assert!(filter.contains(&ymd(2024, 1, 1)));
+        assert!(filter.contains(&ymd(2024, 1, 10)));
+        assert!(!filter.contains(&ymd(2024, 6, 1)));
     }
 }

@@ -59,7 +59,7 @@ shift $((OPTIND -1))
 # Read input from stdin
 while IFS=$'\t' read -r day duration text; do
     if ! "$print_total_only"; then
-        echo -e "$datetime\t$duration\t$text"
+        echo -e "$day\t$duration\t$text"
     fi
     total_duration_minutes=$((total_duration_minutes + $(calculate_duration "$duration")))
 done

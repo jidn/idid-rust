@@ -40,6 +40,10 @@ pub fn get_tsv_path(tsv: &Option<std::path::PathBuf>) -> Result<PathBuf, Error> 
                     path.push("idid");
                     path.push("idid.tsv");
 
+                    if let Some(parent) = path.parent() {
+                        fs::create_dir_all(parent)?;
+                    }
+
                     // Check for file $XDG_DATA_HOME/idid/idid.tsv
                     match is_existing_file(&path, &prefix) {
                         Ok(path) => Ok(path),

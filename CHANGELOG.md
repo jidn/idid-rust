@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## 0.1.5
+
+### Added
+
+- End-to-end CLI tests and expanded project verification.
+
+### Changed
+
+- Improved CLI error messages and JSON output.
+- Added XDG data-directory initialization.
+
+### Fixed
+
+- Corrected duration reporting for adjusted activity times.
+- Fixed the `total-duration.sh` date output.
+
 ## 0.1.4
 
 ### Added

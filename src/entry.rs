@@ -1,6 +1,7 @@
 use crate::date_filter::DateFilter;
 use chrono::{DateTime, FixedOffset};
 use rev_lines::RevLines;
+use serde::Serialize;
 use std::fmt;
 use std::fs;
 use std::io;
@@ -41,25 +42,30 @@ impl Entry {
 
     /// Serialize as json or TSV
     pub fn serialize(&self, in_seconds: &bool, json: bool) -> String {
-        let (label, value) = match in_seconds {
-            true => ("seconds", format!("{}", self.duration().num_seconds())),
-            false => ("duration", format!("\"{}\"", self.hh_mm())),
-        };
         if json {
-            format!(
-                "{{\"begin\":\"{}\",\"{}\":{},\"text\":\"{}\"}}",
-                self.begin.to_rfc3339(),
-                label,
-                value,
-                escape_for_json(&self.text)
-            )
+            let output = if *in_seconds {
+                JsonEntry {
+                    begin: self.begin.to_rfc3339(),
+                    seconds: Some(self.duration().num_seconds()),
+                    duration: None,
+                    text: &self.text,
+                }
+            } else {
+                JsonEntry {
+                    begin: self.begin.to_rfc3339(),
+                    seconds: None,
+                    duration: Some(self.hh_mm()),
+                    text: &self.text,
+                }
+            };
+            serde_json::to_string(&output).expect("serializing an entry cannot fail")
         } else {
-            format!(
-                "{}\t{}\t{}",
-                self.begin.to_rfc3339(),
-                value.trim_start_matches('"').trim_end_matches('"'),
-                self.text
-            )
+            let value = if *in_seconds {
+                self.duration().num_seconds().to_string()
+            } else {
+                self.hh_mm()
+            };
+            format!("{}\t{}\t{}", self.begin.to_rfc3339(), value, self.text)
         }
     }
 
@@ -285,19 +291,14 @@ pub fn hh_mm(duration: &chrono::Duration) -> String {
     format!("{:02}:{:02}", hours, minutes)
 }
 
-fn escape_for_json(text: &str) -> String {
-    let mut escaped_string = String::new();
-    for c in text.chars() {
-        match c {
-            '"' => escaped_string.push_str("\\\""),
-            '\\' => escaped_string.push_str("\\\\"),
-            '\n' => escaped_string.push_str("\\n"),
-            '\r' => escaped_string.push_str("\\r"),
-            '\t' => escaped_string.push_str("\\t"),
-            _ => escaped_string.push(c),
-        }
-    }
-    escaped_string
+#[derive(Serialize)]
+struct JsonEntry<'a> {
+    begin: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    seconds: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    duration: Option<String>,
+    text: &'a str,
 }
 
 #[cfg(test)]
@@ -310,6 +311,22 @@ mod tests {
         let line = "2024-04-01T12:00:00+00:00\tSample text";
         let entry = Entry::from_tsv(line).unwrap();
         assert_eq!(entry.1, "Sample text");
+    }
+
+    #[test]
+    fn test_json_serialization_escapes_control_characters() {
+        let begin = chrono::DateTime::parse_from_rfc3339("2024-04-01T08:00:00Z").unwrap();
+        let cease = chrono::DateTime::parse_from_rfc3339("2024-04-01T09:00:00Z").unwrap();
+        let entry = Entry {
+            begin,
+            cease,
+            text: "quote \" slash \\ newline\n nul\u{0}".to_string(),
+        };
+
+        let output = entry.serialize(&false, true);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(parsed["duration"], "01:00");
+        assert_eq!(parsed["text"], entry.text);
     }
 
     #[test]
@@ -360,7 +377,7 @@ mod tests {
         .to_string()
     }
 
-    /// A day with 4 issue, 3 messages, and total of 10 entries
+    // A day with 4 issue, 3 messages, and total of 10 entries
     // fn sample_day() -> String {
     //     concat!(
     //         "2024-04-01T08:00:00Z\t*~*~*--------------------\n",

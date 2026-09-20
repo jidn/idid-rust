@@ -116,7 +116,10 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     let tsv: String = idid::get_tsv_path(&cli.tsv)
-        .unwrap()
+        .unwrap_or_else(|error| {
+            eprintln!("Error: {error}");
+            std::process::exit(1);
+        })
         .to_string_lossy()
         .to_string();
 
@@ -161,10 +164,7 @@ fn main() {
                 );
             }
         }
-        None => {
-            #[cfg(debug_assertions)]
-            println!("None: current tsv={}", tsv);
-        }
+        None => unreachable!("clap requires a subcommand"),
     }
 }
 
@@ -176,9 +176,12 @@ fn command_add(tsv: &str, offset: Option<&str>, quiet: &bool, text: &[String]) {
                 eprintln!("Error: missing text");
                 std::process::exit(1);
             }
-            let timestamp = get_last_entry_timestamp(tsv).expect("Bad last entry");
+            let timestamp = get_last_entry_timestamp(tsv).unwrap_or_else(|error| {
+                eprintln!("Error: {error}");
+                std::process::exit(1);
+            });
             idid::write_to_tsv(tsv, &ended, Some(&text.join(" ")));
-            let duration = current_datetime() - timestamp;
+            let duration = ended - timestamp;
             if duration > Duration::hours(12) {
                 println!(
                     "WARNING: elapsed time from last is {:>2}:{:>02}",
@@ -259,7 +262,10 @@ fn command_last(tsv: &str, lines: &Option<u32>) {
             }
         }
     } else {
-        let timestamp = get_last_entry_timestamp(tsv).expect("Invalid TSV");
+        let timestamp = get_last_entry_timestamp(tsv).unwrap_or_else(|error| {
+            eprintln!("Error: {error}");
+            std::process::exit(1);
+        });
         let now = current_datetime();
         if now.date_naive() == timestamp.date_naive() {
             let elapsed = now - timestamp;
@@ -284,26 +290,30 @@ fn offset_from_current_or_current(offset: Option<&str>) -> Result<DateTime<Fixed
 }
 
 fn get_last_entry_timestamp(tsv: &str) -> Result<DateTime<FixedOffset>, String> {
-    let file = fs::File::open(tsv).expect("Failed to open TSV file");
+    let file = fs::File::open(tsv).map_err(|error| format!("unable to open TSV: {error}"))?;
     let mut reverse_buffer = rev_lines::RevLines::new(file);
-    match reverse_buffer.next().expect("empty TSV") {
-        Ok(tsv_line) => {
+    match reverse_buffer.next() {
+        Some(Ok(tsv_line)) => {
             let (timestamp, _) = idid::Entry::from_tsv(&tsv_line)?;
             Ok(timestamp)
         }
-        Err(e) => panic!("{}", e),
+        Some(Err(e)) => Err(format!("unable to read TSV: {e}")),
+        None => Err("TSV is empty".to_string()),
     }
 }
 
 /// Process dates and ranges using str_to_date
 fn date_filter_from_date_args(args: &ArgsShow) -> idid::DateFilter {
-    let mut parsed_dates =
-        date_parse::strings_to_dates(&args.dates).expect("Unable to parse dates.");
-    let parsed_range = date_parse::strings_to_dates(&args.range).expect("Unable to parse range.");
+    let mut parsed_dates = date_parse::strings_to_dates(&args.dates).unwrap_or_else(|error| {
+        eprintln!("Error: unable to parse date: {error}");
+        std::process::exit(1);
+    });
+    let parsed_range = date_parse::strings_to_dates(&args.range).unwrap_or_else(|error| {
+        eprintln!("Error: unable to parse range: {error}");
+        std::process::exit(1);
+    });
 
-    if parsed_dates.len() == 0 && parsed_range.len() == 0 {
-        #[cfg(debug_assertions)]
-        println!("ArgsShow adding default of today");
+    if parsed_dates.is_empty() && parsed_range.is_empty() {
         parsed_dates.push(date_parse::date_from_str("today").unwrap());
     }
     idid::DateFilter::new(&parsed_range, &parsed_dates)

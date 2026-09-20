@@ -1,7 +1,7 @@
 # Maintainer: Clinton James <clinton+rust@jidn.com>
 
 pkgname="idid"
-pkgver=0.1.0
+pkgver=0.1.5
 pkgrel=1
 pkgdesc="A time tracker of what I did."
 arch=("x86_64")
@@ -36,4 +36,3 @@ package() {
     install -Dm644 "README.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
     install -Dm644 "LICENSE-MIT" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-MIT"
 }
-

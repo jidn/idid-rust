@@ -21,14 +21,6 @@ pub fn time_adjustment(input: Option<&str>) -> Result<DateTime<FixedOffset>, Str
             let offset_time = current_datetime()
                 .checked_sub_signed(Duration::minutes(minutes as i64))
                 .unwrap();
-            #[cfg(debug_assertions)]
-            println!(
-                "time_adjustment minutes={}, current={}, computed={}, computed_timestamp={}",
-                minutes,
-                current_datetime(),
-                offset_time,
-                offset_time.timestamp() as f64
-            );
             return Ok(offset_time);
         }
         return Err(format!("Invalid minutes {:?}", input_str));
@@ -52,12 +44,18 @@ pub fn time_adjustment(input: Option<&str>) -> Result<DateTime<FixedOffset>, Str
     match parts.len() {
         1 => {
             // parse [HH]
-            _hour = parts[0].parse::<u32>().expect("invalid HH(am|mm) format"); //ok()?;
+            _hour = parts[0]
+                .parse::<u32>()
+                .map_err(|_| "invalid HH(am|mm) format".to_string())?;
         }
         2 => {
             // parse [HH, MM]
-            _hour = parts[0].parse::<u32>().expect("invalid hours");
-            minute = parts[1].parse::<u32>().expect("invalid minutes");
+            _hour = parts[0]
+                .parse::<u32>()
+                .map_err(|_| "invalid hours".to_string())?;
+            minute = parts[1]
+                .parse::<u32>()
+                .map_err(|_| "invalid minutes".to_string())?;
         }
         _ => return Err("invalid HH[:MM](am|mm) format".to_string()),
     }
@@ -127,6 +125,8 @@ mod tests {
     #[case("13pm", "invalid hours with \"pm\"")]
     #[case("1jk", "invalid HH[:MM](am|mm) format")]
     #[case("1:30jk", "invalid HH[:MM](am|mm) format")]
+    #[case("12:", "invalid minutes")]
+    #[case(":30", "invalid hours")]
     fn test_time_adjustment_bad_input(#[case] input: &str, #[case] expected: &str) {
         match time_adjustment(Some(input)) {
             Ok(_) => {

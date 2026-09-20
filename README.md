@@ -1,303 +1,370 @@
 # idid
 
-[![Build Status](https://github.com/jidn/idid-rust/actions/workflows/rust.yml/badge.svg)](https://github.com/jidn/idid-rust/actions/workflows/rust.yml)
+[![Build](https://github.com/jidn/idid-rust/actions/workflows/rust.yml/badge.svg)](https://github.com/jidn/idid-rust/actions/workflows/rust.yml)
 [![Crates.io](https://img.shields.io/crates/v/idid)](https://crates.io/crates/idid)
-![Crates.io Downloads (recent)](https://img.shields.io/crates/dr/idid)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
 
-**Idid** is a command-line tool for tracking time spent and kept in a simple, structured format.
+`idid` is a small command-line time tracker for recording what you actually
+did.
 
----
+It keeps your history in a plain text TSV file. Each record contains a
+timestamp and a description. Durations are calculated from neighboring
+records, so the file stays easy to read, edit, copy, and process with other
+command-line tools.
 
-**Table of Contents**
+## Contents
 
-- [Why another time tracker](#why)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-  - [Start your day](#start-your-day)
-  - [Add entry](#additional-activity)
-  - [Edit entries](#edit-your-history)
-  - [What did I last do?](#what-did-i-last-do)
-  - [Show your day](#show-your-day)
-    - [DATE formats](#date-formats)
-- [Usage](#usage)
-  - [Commands](#commands)
-  - [Options](#options)
+- [Why use it?](#why-use-it)
+- [How it works](#how-it-works)
+- [Install](#install)
+- [Quick start](#quick-start)
+- [Recording time](#recording-time)
+- [Common workflows](#common-workflows)
+- [Reviewing your history](#reviewing-your-history)
+- [Edit the data directly](#edit-the-data-directly)
+- [Command summary](#command-summary)
+- [Useful scripts](#useful-scripts)
 - [Contributing](#contributing)
 - [License](#license)
 
-## Why
+## Why use it?
 
-Why another time tracker? Simply, the others didn't meet my needs. I wanted:
+`idid` is designed for people who want to record work quickly without turning
+their day into a project-management exercise.
 
-- Easy command line.
-- Simple data structure.
-- Simple to edit and modify.
-- Geared for my needs, not any manger or corprate desires.
-- Focus on what I actually did, not what I planned on doing; these are not the same.
+- Record an activity with one short command.
+- Track interruptions, meetings, breaks, and work in progress.
+- Edit your history with a normal text editor.
+- Keep your data in a simple, portable file.
+- Filter and transform output with tools such as `grep`, `sort`, and `awk`.
 
-**Easy command line**.
-There are only five commands: start, add, edit, last, and show.
-Of thoses you could be happy only knowing the first three.
-Some of the other popular time trackers have well over 15 different commands, far too many.
+## How it works
 
-**Simple data structure**.
-It is a two column tab-separated-value (TSV) file.
-The timestamp and a text description of what I did.
-No start time or duration is needed as it can be calculated from the previous entry.
+`idid` stores one timestamp and one description per line. It calculates an
+activity’s duration from the timestamp on the following line:
 
-**Simple to edit and modify**.
-This tool does not attempt to make changes.
-The possibilities are vast, so you edit the TSV file directly.
-You want to insert a task?
-Just add a row and because start and duration is calculated from previous rows you don't need to modify an others.
+```text
+08:00  *~*~*--------------------
+09:15  reviewed the project notes
+10:00  answered email
+```
 
-**Geared for my needs**.
-I wanted to accurately track interuptions; people dropping by needing help, mentoring, or solving problems.
-I also was curious about the actual amount of time I spent on various activities and discovered it didn't match what I remembered in a day or two.
+In this example, `reviewed the project notes` lasted 45 minutes. The start
+marker begins a tracking period but is not itself an activity.
 
-**Focus on what I did**.
-Most of the alternate solutions start with the premis, "I plan to start THIS."
-What I quickly discovered is planning rarely survives the actual encounter.
-So I needed to record what I did.
-It is at this point I can reflect.
-If an interruption is happening, I can quickly jot down what I was doing with work-in-progress "@WIP".
+This model keeps the data simple: add, remove, or correct a line and the
+calculated durations adjust automatically.
 
-### Evolution of `idid`
+## Install
 
-This started as a simple bash script, adding features as I needed.
-It worked well.  
-Eventually, it moved to Python for duration calculation; see `idid show --help`.
-However, I got frustrated with [externally managed systems](https://peps.python.org/pep-0668) when setting `idid` up on other machines.
-I was learning Rust and here was an opportunity to migrate to an app, dragging my TSV file with me.
+With Rust and Cargo installed:
 
-## Installation
+```sh
+cargo install idid
+```
 
-There are a number of ways to install `idid` either repository, cargo, or Arch Linux makepkg.
-Read the [INSTALL.md](INSTALL.md) file for details.
+To build the current repository instead:
 
-## Quick Start
+```sh
+git clone https://github.com/jidn/idid-rust.git
+cd idid-rust
+cargo install --path .
+```
 
-`idid` revolves around the idea of recording what you just did, hence the name `idid`.
-As you record your activity, the duration is calculated from your previous entry.
-Thus, your first entry for the day is starting.
+See [INSTALL.md](INSTALL.md) for release builds and Arch Linux installation.
 
-### Start your day
+## Quick start
 
-Your first accomplishment of the day is just to start `idid` recording for the day.
+The shortest useful workflow is:
 
 ```sh
 idid start
-Starting at 07:55 AM.  All right!
+idid add reviewed the project notes
+idid show
 ```
 
-Wow, nice feedback. If you prefer no response, just use the `--quiet` flag.
+The first record of a work period establishes its starting point. Each later
+activity lasts until the next record. If you stop tracking for lunch or for a
+long break, use `start` when you return to begin a new period.
 
-Altering the start time is easy. Just give it the number of minutes ago or the time.
-For example, as I was coming in, Tim stopped me in the hall for about 10 minutes going over an item and it is now 8:05 am.
+## Recording time
+
+### Start a period
+
+`start` writes a special marker to the TSV file:
 
 ```sh
-idid start -t 10
-Starting at 07:55 AM.  Keep it up.
-
-idid start -t 7:55
-Starting at 07:55 AM.  Sensational.
+idid start
+idid start --quiet
 ```
 
-### Additional activity
-
-As you finish a task, milestone, or item of note, record what you did.
+Use `-t` when the period began earlier:
 
 ```sh
-idid add +project spoke with Tim
-00:10  Super.
+idid start -t 10       # ten minutes ago
+idid start -t 8:00am
+idid start -t 13:15
 ```
 
-and 25 minutes later
+### Add an activity
+
+The text after `add` becomes the activity description. Multiple words are
+joined into one description:
 
 ```sh
-idid add cleared inbox
-00:25  Well done!
+idid add prepared the meeting agenda
 ```
 
-Nice. I see the duration in HH:MM format and some positive feedback.
-
-Later on, you forgot to record fixing an issue 10 minutes ago at 9:50.
-To alter the time, use the `-t` option with either the number of minutes or the time.
-
-```
-idid add -t 10 fixed issue #42
-Mon 09:50 AM for 01:30  Well done!
-```
-
-or
+You can also enter an activity that happened earlier:
 
 ```sh
-idid add -t 9:50 fixed issue #42
-Mon 09:50 for 01:30  Well done!
+idid add -t 10 fixed issue 42
+idid add -t 9:50 fixed issue 42
 ```
 
-Notice there is more information about when the task started.
+The time argument accepts a number of minutes ago, a 24-hour time, or a time
+with `am` or `pm`.
 
-Remember you are typing in your shell so some characters will cause problems.
-The most common issues are single quotes, semi-colons, redirection, and ampersands.
-You will have to quote them or use natural language.
-
-### Multiple, distinct activity/projects
-
-Freelancers need to track multiple projects/client as they switch tasks throughout the day.
-I use a [TodoTxt.org](https://github.com/todotxt/todo.txt?tab=readme-ov-file#context)
-context tag at the beginning of `add` text, a word starting with a plus sign.
-Use whatever works best for you.
+Use `--quiet` when another program or shell script should receive no progress
+message:
 
 ```sh
-idid add -q "+acme emailed CJ on next steps"
+idid add --quiet sent the status update
 ```
 
-Use command line tools filter results.
+Quote activity text when your shell would otherwise interpret special
+characters such as `&`, `;`, redirects, or quotes:
 
 ```sh
-idid show today | grep '+acme'
+idid add 'reviewed the build & deployment scripts'
 ```
 
-### Noncontiguous: lunch and extended breaks
+### Tag activities
 
-Lunch or extended breaks may not be something you want to track.
-For some reason, those to whom I report do not want that time included.
-Add an entry before leaving about what you have done up to that point with `idid add 'project poodles work-in-progress (WIP)'` or something similar.
-Now use `idid start` after returning.
-However, if you want to document your time, use a personal context or whatever makes sense to you and your workflow.
+The description is deliberately free-form. A useful convention is to put a
+project or context tag at the beginning:
 
 ```sh
-idid add +personal hotdog lunch at Costco
+idid add +acme emailed the next steps
+idid add +lunch at Costco
 ```
 
-### Edit your history
+Then filter the output:
 
-If you need to alter time, insert an entry, or edit an entry; just edit the TSV file and everything adjusts accordingly.
-The `edit` sub-command allows you to quickly use the vi family of editors open the TSV file and place you at the file's end.
-
-```shell
-idid edit
+```sh
+idid show | grep '+acme'
 ```
 
-If you are using another text editor. The file is usually found at `$XDG_DATA_HOME/idid/idid.tsv` or `~/.local/share/idid/idid.tsv`.
+## Common workflows
 
-Now you can make changes.
+### Resume after a break
 
-- Remove that double entry.
-- Add the accomplishment you forgot.
-- Fix the typos.
+End the current period with an activity, then start a new period when you
+return:
 
-Things to remember.
+```sh
+idid add finished the morning work
+idid start
+```
 
-- The TSV must be in chronological order. The start and duration depends on it.
-- Blank lines and comments are not allowed.
-- Do not alter the start text "`*~*~*--------------------`".
+If you want to record the break itself, add it as an ordinary activity with a
+tag such as `+personal`.
 
-### What did I last do?
+### Correct a missed entry
 
-Opening the TSV file is a bit of an overkill to answer the question.
-You can use `last` without any arguments to see the duration from the last time you added anything.
-If you give last a number then it will show that number of entries in the TSV.
+Use `-t` to record when an activity actually happened:
+
+```sh
+idid add -t 15 fixed the test failure
+```
+
+For larger corrections or inserted records, use `idid edit` and update the
+TSV directly.
+
+### Use short aliases
+
+If `add` is part of your regular workflow, a short alias can make recording
+nearly instant:
+
+```sh
+alias tt='idid add'
+tt reviewed the deployment notes
+```
+
+## Reviewing your history
+
+### See the most recent activity
+
+With no argument, `last` shows how long ago the latest record was written:
 
 ```sh
 idid last
 00:25
 ```
 
-It has been 25 minutes from my last entry. Time is flying past.
+Give it a number to print that many raw TSV lines, newest first:
 
 ```sh
 idid last 3
-2024-04-01T10:40:24-05:00	Issue #680 solution tested
-2024-04-01T08:57:43-05:00	Help CJ with @ACME problem
-2024-04-01T08:43:07-05:00	Issue #680 fix +WIP
 ```
 
-Note the most recent is first, and you can see I recorded helping CJ.
-Now I have choices. Do I make edits or can I just add a new entry?
+### Show entries
 
-### Show your day
+`show` displays matching activities newest first. By default, it shows today:
 
-It would be nice to show a list entries for today.
-
-```shell
-$ idid show today
-2024-04-01T15:02:24-05:00	00:10  emailed status update to PH
-...  (redacted)
-2024-04-01T08:02:25-05:00	00:04  daily planning
+```sh
+idid show
 ```
 
-This is not a neat report. It is not a report at all.
-It is simple a dump of all of today's entries with the duration in HH:MM format.
-And yes, I know the date looks a bit funny. It is a format specified in [RFC 3339](http://tools.ietf.org/html/rfc3339).
-While "readable" may be debated, it has several benefits as it remains in chronological order when sorted, is strictly defined, and has common library support.
-You can give any number of **`[DATE](#date-format)`**s or use the `--range` with two dates to get all entries within the range.
+Show a particular day:
 
-This consistant output format allows you to create additional tools to transforms the information for reporting, invoicing, or whatever your mind dreams up. See [group-by-day.sh](scripts/group-by-day.sh) as an example.
+```sh
+idid show yesterday
+idid show 1
+idid show 2024-04-01
+```
 
-There are a couple of options to help with additional processing.
-You can get the duration in seconds and json output rather than TSV.
-I hope these convience will help in creating new external processing tools.
-See `idid show --help` for details.
+Show several days or an inclusive range:
 
-#### DATE formats
+```sh
+idid show mon tue wed
+idid show --range mon fri
+```
 
-The word `today` is a special `DATE`, as is `yesterday`.
-You can also use the number of days in the past and `idid show 0` is the same as `idid show today`.
-While `DATE` as a number is difficult to use for anything over a handful of digits, any number less than a thousand is valid.
+Add a total to the normal human-readable output:
 
-A much easier format is the two-digit month and day as **`MM-DD`** or **`MMDD`**; the dash is optional.
-As long as the date is within the last 264ish days, you don't need to specify the year.
+```sh
+idid show --total
+```
 
-To specify the year, use **`YYYY-MM-DD`** or **`YY-MM-DD`** assuming date is after the year 2000.
-Again, dashes are optional in calendar dates.
+The output is intended to be useful to both people and scripts. A normal
+entry looks like this:
 
-Just remember that if today is Monday, then 'mon' is last Monday not today.
-If you want to add additional weeks, append a number to the DOW.
-The Monday one week before the last Monday is `mon1`.
+```text
+2024-04-01T15:02:24-05:00	00:10	emailed status update
+```
 
-If today were Monday, April 1, 2024, then Sunday, March 31, 2024, could be represented by any of the following:
+The timestamp uses RFC 3339. The duration is shown as `HH:MM`.
 
-- sun
+For scripts that need seconds instead of `HH:MM`:
 
-* yesterday
-* 1
-* 03-31 or 0331
-* 2024-03-31, 240331, or 20240331
+```sh
+idid show --seconds
+```
 
-I know. It seems a bit excessive. But I use them, so use the ones that work best for your needs.
-If you need a quick reminder, execute `idid show --help`.
+For structured processing, request one JSON object per matching entry:
 
-## Usage
+```sh
+idid show --json
+idid show --json --seconds
+```
 
-The idid tool provides several commands and options for managing your accomplishments. Here's a brief overview:
+The JSON output is newline-delimited: each output line is a separate JSON
+object.
 
-### Commands
+### Date formats
 
-- **start**: Start recording time for the day.
-- **add**: Add a new accomplishment.
-- **edit**: Edit the TSV (Tab-Separated Values) file using your default editor.
-- **last**: See the duration from today's last entry or display a specific number of lines from the TSV file.
-- **show**: Show selected accomplishments.
+The date arguments accepted by `show` include:
 
-### Options
+- `today` and `yesterday`;
+- a number from `0` to `999`, meaning that many days ago;
+- `MM-DD` or `MMDD` for a recent date without a year;
+- `YY-MM-DD`, `YYMMDD`, `YYYY-MM-DD`, or `YYYYMMDD`;
+- a weekday such as `mon`, `tue`, or `fri`;
+- a weekday followed by a number, such as `mon1`, for an earlier week.
 
-- `--tsv <FILE>`: Specify a custom TSV file instead of the default location.
-- `-h, --help`: Display help information.
-- `-V, --version`: Display the version of **idid**.
+Weekdays refer to the most recent occurrence before today. For example, if
+today is Monday, `mon` means the previous Monday and `mon1` means the Monday
+before that.
 
-For detailed usage instructions and examples, run `idid --help` or `idid <command> --help`.
+Run this whenever you need a compact reminder of the accepted formats:
+
+```sh
+idid show --help
+```
+
+## Edit the data directly
+
+Use `edit` to open the TSV file in the editor named by `$EDITOR`:
+
+```sh
+idid edit
+```
+
+The data file is selected in this order:
+
+| Source                         | Purpose                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `--tsv FILE`                   | Use one specific file. The file must already exist.                |
+| `ididTSV`                      | Set a preferred file path.                                         |
+| `$XDG_DATA_HOME/idid/idid.tsv` | Use the default file, creating its directory and file when needed. |
+
+For example, to use a separate file for a project:
+
+```sh
+touch project.tsv
+idid --tsv project.tsv start
+idid --tsv project.tsv add investigated the deployment issue
+```
+
+> [!TIP]
+> If you use that file often, a short alias keeps the workflow quick:
+>
+> ```sh
+> alias pa='idid --tsv project.tsv add'
+> pa investigated the deployment issue
+> ```
+
+> [!IMPORTANT]
+> Keep records in chronological order, use one record per line, and do not add
+> blank lines or comments. Do not change the special start marker.
+
+The special start marker is:
+
+```text
+*~*~*--------------------
+```
+
+Because durations are calculated from neighboring timestamps, inserting,
+removing, or correcting a record automatically changes the calculated results.
+
+## Command summary
+
+```text
+idid start [--quiet] [-t WHEN]
+idid add [--quiet] [-t WHEN] TEXT...
+idid edit
+idid last [LINES]
+idid show [DATE...] [--range DATE DATE] [--total] [--seconds] [--json]
+```
+
+All commands also accept `--tsv FILE` to select a particular history file.
+Use `idid COMMAND --help` for the complete command-specific help.
+
+## Useful scripts
+
+The repository includes shell examples for processing `show` output:
+
+- [`scripts/group-by-day.sh`](scripts/group-by-day.sh) groups durations by day.
+- [`scripts/total-duration.sh`](scripts/total-duration.sh) adds durations.
+
+For example:
+
+```sh
+idid show mon fri | grep -v lunch | ./scripts/group-by-day.sh
+```
 
 ## Contributing
 
-Contributions to idid-rust are welcome! If you'd like to contribute, please follow these steps:
+Changes are welcome. Build and verify the project with:
 
-- Fork the repository.
-- Create your feature branch (`git checkout -b feature/my-feature`).
-- Commit your changes (`git commit -am 'Add new feature'`).
-- Push to the branch (`git push origin feature/my-feature`).
-- Create a new Pull Request.
+```sh
+just verify
+```
+
+The repository’s [`justfile`](justfile) is the source of truth for these
+development checks. Individual recipes are available for `build`, `fmt`,
+`check`, `test`, `lint`, and `shell-check`.
 
 ## License
 

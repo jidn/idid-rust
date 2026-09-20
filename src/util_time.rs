@@ -8,12 +8,8 @@ thread_local! {
 pub(crate) fn current_datetime() -> DateTime<FixedOffset> {
     FIXED_TIME.with(|time_cell| {
         if let Some(datetime) = *time_cell.borrow() {
-            #[cfg(test)]
-            println!("current_datetime {}", datetime);
             datetime
         } else {
-            #[cfg(test)]
-            println!("current_datetime Local::now()");
             Local::now().fixed_offset()
         }
     })

@@ -1,6 +1,6 @@
 # Maintainer: Clinton James <clinton+rust@jidn.com>
 pkgname=idid
-pkgver=0.1.0
+pkgver=0.1.5
 pkgrel=1
 makedepends=('rust' 'cargo')
 arch=('x86_64' 'armv6h' 'armv7h')

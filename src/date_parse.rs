@@ -39,14 +39,9 @@ pub fn strings_to_dates(dates: &Option<Vec<String>>) -> Result<Vec<NaiveDate>, S
 pub fn date_from_str(format: &str) -> Result<NaiveDate, String> {
     let now = current_datetime().date_naive();
 
-    #[cfg(debug_assertions)]
-    println!("format={:?}, now={}", format, now);
-
     // All days before today and YYYY-MM-DD variants
     if format.chars().all(|c| c.is_ascii_digit() || c == '-') {
         let value = numeric_to_date(format, Some(now));
-        #[cfg(debug_assertions)]
-        println!("numeric_to_date: {:?}", value.as_ref().expect("date"));
         return value;
     }
 
@@ -54,8 +49,6 @@ pub fn date_from_str(format: &str) -> Result<NaiveDate, String> {
     // with "yester", like "yesternight".  This one is for you Cameron.
     let lower_case = format.to_lowercase();
     if lower_case.starts_with("yester") {
-        #[cfg(debug_assertions)]
-        println!("Working on 'yester'");
         return now
             .checked_sub_signed(chrono::Duration::days(1))
             .ok_or_else(|| format!("unable to get {} ", lower_case));
@@ -143,6 +136,12 @@ pub fn numeric_to_date(
 ///
 /// The input is expected to be lowercase.
 fn last_dow(input: &str, reference_date: Option<NaiveDate>) -> Result<NaiveDate, String> {
+    if input.len() < 3 {
+        return Err(
+            "invalid day of the week abbreviation; use: mon, tue, wed, thu, fri, sat, sun"
+                .to_string(),
+        );
+    }
     let day_of_week: &str = &input[..3];
 
     // Calculate the target day of the week
@@ -347,5 +346,7 @@ mod tests {
                     .to_string()
             )
         );
+        assert!(date_from_str("x").is_err());
+        assert!(date_from_str("").is_err());
     }
 }
